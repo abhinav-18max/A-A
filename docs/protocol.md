@@ -104,6 +104,9 @@ extensible for extractors. Built-in types include:
 | `capture.gap` | Stream and gap/drop reason; interval/count when known |
 | `capture.metrics` | Recording and sampler counters |
 | `extraction.gap` / `extraction.failed` | Processor and affected evidence |
+| `webmcp.tools_changed` | Page tools added/removed: name, description, annotations |
+| `webmcp.invoked` | Tool, invocation ID, `initiator` (adapter/page), `tool_source`, input preview |
+| `webmcp.responded` | Invocation ID, status, error, output preview/bytes/SHA-256 |
 
 Observation timestamps are mapped from their producer clock. DOM events include
 clock-mapping uncertainty. Events may arrive out of observation order; publication
@@ -140,6 +143,35 @@ timestamps. The file becomes a complete downloadable artifact only after EOS
 finalization. Chunked `video.segment` and `audio.segment` evidence remains available.
 Capture subscriptions do not define agent turns.
 
+
+## WebMCP and remote CDP browsers (0.3.0)
+
+`BrowserStart` adds `webmcp` (15), `remote_cdp_url` (16) and `remote_cdp_headers_json`
+(17). With `webmcp`, the worker launches Chromium with
+`--enable-features=CDPScreenshotNewSurface,WebMCP`: Playwright passes the first feature
+itself and Chromium keeps only the last copy of a repeated switch.
+
+| Operation | Value / options | Result |
+|---|---|---|
+| `webmcp_tools` | `page_id` | `tools` (per frame, with `tool_source`), `blocked_frames`, `available`, `site_enabled` |
+| `webmcp_call` | value = tool name; `arguments`, `source` (`site`/`tester`), `frame_id`, `timeout_ms` | `status` (`completed`/`error`/`navigated`), `result` or truncated `output_text`, `output_bytes`, `output_sha256`, `untrusted: true` |
+| `webmcp_adapter` | `adapter` (SiteAdapter) or `remove` (name) | Registered adapter names |
+
+Errors: `webmcp_disabled`, `webmcp_tool_not_found`, `webmcp_ambiguous_tool` (pass
+`frame_id`), `webmcp_timeout`, `webmcp_unavailable`, `webmcp_missing_argument`,
+`webmcp_step_failed`, `invalid_adapter`. Page tools are discovered with
+`document.modelContext.getTools()` in every frame and called with
+`executeTool(tool, inputJson)`; the Chromium DevTools `WebMCP` domain supplies the
+journal events. Site adapter steps may use any browser operation except page lifecycle,
+text, binding and WebMCP operations; `timeout_ms` bounds each step.
+
+`remote_cdp_url` makes the worker call `connectOverCDP` instead of launching Chromium.
+Only tools-mode text sessions without recording or capture are accepted, the URL and
+headers never leave the in-process library, and `POST /v1/sessions` rejects the option
+with `remote_browser_library_only`. Capabilities report `remote_browser` and `webmcp`.
+
+`SessionConfig.webmcp` is omitted from HTTP requests when false, so plain sessions still
+start on 0.2 workers. Native sessions require Playwright 1.63.x on both sides.
 
 ## Harness integration additions
 

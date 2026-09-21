@@ -35,7 +35,9 @@ helpers return ordinary Playwright objects and keep media on the same A&A sessio
 The optional `mba mcp` command exposes stdio tools outside the worker.
 
 See [harness integration](docs/harness-integration.md) for installation, native client
-examples, ownership, remote streaming, and compatibility limits.
+examples, ownership, remote streaming, and compatibility limits. The TypeScript
+`@mba/harness-client` has the same audio, camera, visual, recording and event methods as
+the Python SDK. To host workers yourself, follow the [cloud runbook](docs/deploy-cloud.md).
 
 ## Install and use text mode
 
@@ -240,6 +242,73 @@ session uses separate sockets, process environments, audio server, and display. 
 access is leased. Host-level isolation of untrusted sites is the responsibility of
 the deployment; the optional container worker provides a stronger boundary.
 
+## WebMCP page tools and site adapters
+
+[WebMCP](https://webmachinelearning.github.io/webmcp/) lets a page register tools
+(`document.modelContext.registerTool`) that an agent calls instead of driving the UI.
+Chromium 153 ships it behind a feature flag; `SessionConfig(webmcp=True)` enables it.
+
+```python
+async with Adapter(SessionConfig(recording=False, webmcp=True, target_url=URL)) as session:
+    listing = await session.webmcp.tools()        # every frame; blocked frames are reported
+    result = await session.webmcp.call("search", {"query": "pricing"})
+```
+
+Tool names, descriptions and results come from the page: they are marked `untrusted`
+and must be treated as data, never instructions. Calls time out (default 30 s), cap
+output at 256 KiB, and report `navigated` if the page unloads. Each page has a DevTools
+observer, so `webmcp.tools_changed`, `webmcp.invoked` and `webmcp.responded` events
+record every invocation — including ones made by the page's own code — with an
+output preview and SHA-256. Cross-origin iframes expose tools only with `allow="tools"`.
+Sites in Chrome's WebMCP origin trial work without the flag.
+
+Sites without WebMCP have no page tools. A **site adapter** gives the harness the same
+named-tool interface anyway: each tool is a list of ordinary browser operations with
+`{{argument}}` placeholders, run with real Playwright input and journaled with
+`tool_source="tester"`. Adapters need no flag and inject nothing into the page.
+
+```python
+from mba import AdapterStep, AdapterTool, SiteAdapter
+
+await session.webmcp.add_adapter(SiteAdapter(
+    name="chat", url_pattern="https://your-target.example/*",
+    tools=[AdapterTool(
+        name="ask", input_schema={"type": "object", "required": ["text"],
+                                  "properties": {"text": {"type": "string"}}},
+        steps=[AdapterStep(operation="fill", selector="textarea", value="{{text}}"),
+               AdapterStep(operation="click", selector="button.send")],
+    )],
+))
+await session.webmcp.call("ask", {"text": "Hello"})
+```
+
+The MCP server exposes `aa_webmcp_tools`, `aa_webmcp_call` and `aa_webmcp_adapter`;
+native Python/TypeScript helpers are `webmcp_tools`/`webmcp_call` and
+`webmcpTools`/`webmcpCall`. A tool named by both an adapter and the page resolves to
+the adapter unless `source="site"` is passed.
+
+## Remote CDP browsers (text only)
+
+A hosted browser such as Browserbase can host a text session. A&A attaches over CDP
+and reuses the remote default context instead of launching Chromium:
+
+```python
+from mba import RemoteBrowser
+
+config = SessionConfig(
+    recording=False, target_url=URL,
+    remote_browser=RemoteBrowser(cdp_url=session_from_provider.connect_url),
+)
+```
+
+Set `MBA_REMOTE_CDP_HOSTS` to the allowed host names (for example
+`connect.browserbase.com`; `*.example.com` wildcards are accepted). The remote machine's
+microphone, speaker, camera and display are not A&A's, so only tools-mode text sessions
+without recording are accepted; WebMCP works there only for origin-trial sites because
+launch flags cannot be set. The CDP URL and headers are never written to the manifest or
+journal, and the HTTP worker, controller, remote SDK and MCP server reject the option.
+For voice or video agents, run your own worker instead.
+
 ## Optional remote compatibility
 
 Install the `remote` extra to use the existing HTTP SDK/controller:
@@ -269,7 +338,8 @@ uv run python tools/generate.py --typescript --rust
 uv run python tools/browser_build.py
 uv run ruff check src tests tools deploy examples
 uv run pytest -m 'not linux and not soak and not browser' -q
-MBA_BROWSER_TESTS=1 uv run pytest tests/test_browser.py tests/test_library.py tests/test_harness_interfaces.py -q
+MBA_BROWSER_TESTS=1 uv run pytest tests/test_browser.py tests/test_library.py \
+  tests/test_harness_interfaces.py tests/test_webmcp.py tests/test_remote_browser.py -q
 npm run test:types --prefix harness-client
 cargo test --locked --manifest-path media-core/Cargo.toml
 ```

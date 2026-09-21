@@ -1,7 +1,68 @@
-# Verification boundary — 0.2.0 external harness integration
+# Verification boundary — 0.3.0
 
-Last verification: 2026-09-20. All executed checks below passed. This is not yet a
-full Linux media acceptance sign-off.
+## 0.3.0: Playwright 1.63, WebMCP, site adapters, TypeScript media, remote CDP — 2026-09-21
+
+All executed checks below passed. This is not a full Linux media sign-off: the camera
+path, amd64 image, latency targets and soak remain open (see the pending gates).
+
+Environment: macOS arm64, Python 3.12.14, Node.js 26.9.0, Docker Engine 29.8.0 (aarch64).
+No local Rust toolchain was present, so Rust checks ran in `rust:1.98.1-bookworm`
+(Linux ARM64) with GStreamer from Debian. Playwright 1.63.0 bundles Chromium
+153.0.8010.12; the Linux ARM64 image uses Chrome for Testing.
+
+| Check | 0.2.0 baseline (same day) | 0.3.0 |
+|---|---|---|
+| Ruff | Passed | Passed |
+| Portable Python suite | 59 passed, 1 skipped | 61 passed, 1 skipped |
+| Real Chromium: browser, library, harness interfaces | 18 passed (Chromium 134) | 18 passed (Chromium 153) |
+| Real Chromium: WebMCP and site adapters (`tests/test_webmcp.py`) | — | 7 passed |
+| Real Chromium: remote CDP attach (`tests/test_remote_browser.py`) | — | 1 passed (+2 portable) |
+| Rust suite (container) | 6 passed | 6 passed, regenerated binding checked |
+| harness-client strict types | Passed | Passed, including media and WebMCP types |
+| Binding/bundle regeneration | — | Idempotent |
+| Wheel build and clean install | — | `mba setup --browser` into an empty runtime folder, then a real session with WebMCP enabled, PNG capture and socket cleanup |
+
+Linux ARM64 container acceptance on the rebuilt `mba-worker:0.3.0-arm64` image:
+
+- `deploy/test-container.py`: speaker capture, WAV and live 24 kHz microphone input,
+  interruption to silence, Xvfb frames and screenshots, recording finalization, two
+  concurrent sessions with isolated microphones, no leaked processes.
+- `deploy/test-http-container.py`: production entrypoint, non-root UID, authenticated
+  HTTP SDK, browser controls, artifact download, event replay and shutdown.
+- `deploy/test-harness-container.py`: native Python Playwright control; **WebMCP page tool
+  listed and called in headed Linux Chromium**; external MCP WAV capture; stereo 24 kHz
+  input; **TypeScript client 16 kHz microphone input (880 Hz detected in the page),
+  speaker capture (peak 6554) and RGB frames**; cancellation; combined VP8/Opus recording
+  decodes; clean shutdown.
+
+WebMCP findings from Chromium 153 (spikes and tests):
+
+- Off by default; `--enable-features=WebMCP` enables it in both headless shell and full
+  Chromium. Playwright passes `--enable-features=CDPScreenshotNewSurface` itself and
+  Chromium keeps only the last copy of the switch, so A&A sends one merged list.
+- The API is `document.modelContext` (`registerTool`, `getTools`, `executeTool`,
+  `ontoolchange`). `navigator.modelContext` and `navigator.modelContextTesting` do not
+  exist. `executeTool` takes the tool object from `getTools()` and an input JSON string.
+- Cross-origin iframes need `allow="tools"`; otherwise `getTools()` throws NotAllowedError.
+- The DevTools `WebMCP` domain reports registrations and every invocation, including
+  calls made by page code.
+
+Not verified in this run:
+
+- Browserbase itself (no account); a separately launched Chrome over CDP stood in for it.
+- The cloud runbook (`docs/deploy-cloud.md`), the amd64 image, and the Linux x86-64
+  media archive (`tools/package_runtime.py` requires a Linux x86-64 host).
+- GitHub Actions: the workflow was updated but not run.
+
+Notes: Playwright 1.51's downloader hung on Node 26 here, so the baseline Chromium 134
+builds were unpacked manually from the same CDN. DNS lookups failed intermittently
+during the run and succeeded on retry. `npm audit` reports pre-existing advisories in
+the worker's `ws` 8.18.3 and `@grpc/grpc-js` 1.14.0 (fixed in 8.21.3 and 1.14.5); they
+were not changed here. The new harness-client `ws` dependency is 8.21.3.
+
+## 0.2.0 external harness integration — 2026-09-20
+
+All executed checks below passed. This was not a full Linux media acceptance sign-off.
 
 Development environment: macOS arm64. Python 3.12, Node.js 26, a project-local Rust
 1.98.1 toolchain, and Homebrew GStreamer 1.28.7 were used. The reference deployment

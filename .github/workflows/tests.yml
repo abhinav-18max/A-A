@@ -38,7 +38,7 @@ jobs:
       - run: uv run python tools/browser_build.py
       - run: npm run test:types --prefix harness-client
       - run: npx --prefix browser-worker playwright install --with-deps chromium
-      - run: MBA_BROWSER_TESTS=1 uv run pytest tests/test_browser.py tests/test_library.py tests/test_harness_interfaces.py tests/test_webmcp.py -q
+      - run: MBA_BROWSER_TESTS=1 uv run pytest tests/test_browser.py tests/test_library.py tests/test_harness_interfaces.py tests/test_webmcp.py tests/test_remote_browser.py -q
   media:
     runs-on: ubuntu-24.04
     steps:

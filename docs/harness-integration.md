@@ -155,9 +155,48 @@ await native.page.getByRole('button', {name: 'Start'}).dblclick();
 await native.bindText(native.page, {message_selector: '.assistant-message'});
 ```
 
-The small TypeScript package supplies native setup, observation forwarding, session
-control, and typed raw Playwright objects. Continuous media can be connected through
-the binary API from any external connector; this package does not wrap provider SDKs.
+The TypeScript package supplies native setup, observation forwarding, session control,
+typed raw Playwright objects, and the same media surface as the Python SDK. It does not
+wrap provider SDKs.
+
+```typescript
+const session = await client.start({mode: 'audio', camera: false});
+{
+  await using mic = await session.audio.openInput({rate: 24000, channels: 1});
+  for await (const pcm of yourTts())
+    await mic.write(pcm);                  // exactly 20 ms: 960 bytes at 24 kHz mono
+}
+for await (const packet of session.audio.capture({channels: 1})) {
+  yourStt(packet.data);                    // S16LE, packet.ptsUs on the session clock
+}
+for await (const frame of session.visual.frames({fps: 1})) { /* RGB24 1280×720 */ break; }
+await (await session.sendAudio('question.wav')).wait();
+const artifacts = await session.recording.stop();
+for await (const event of session.events()) { /* replay, then live */ }
+```
+
+Input writes are paced from zero at the declared rate and acknowledged per packet, as
+in Python. `decodeMediaPacket` decodes the capture WebSocket's Protobuf packets; the
+browser tests compare it with the Python Protobuf encoder. Node's built-in WebSocket
+cannot send the bearer header, so the package depends on `ws`.
+
+## WebMCP
+
+`SessionConfig(webmcp=True)` enables Chromium's WebMCP API (see the README). In tools
+mode use `session.webmcp.tools()` / `call()`; in native mode the page belongs to your
+Playwright client, so use the helpers, which evaluate the same page functions as the
+worker and forward `webmcp.invoked`/`webmcp.responded` events with `native_helper`
+provenance:
+
+```python
+async with session.connect_native() as native:
+    await native.page.goto("https://your-target.example")
+    tools = await native.webmcp_tools(native.page)
+    result = await native.webmcp_call(native.page, "search", {"query": "pricing"})
+```
+
+TypeScript: `native.webmcpTools(page)` and `native.webmcpCall(page, name, args)`.
+Results are page-provided and marked `untrusted`.
 
 ## Browser tools
 
@@ -237,7 +276,7 @@ requested session. Logs use stderr; stdout is exclusively MCP protocol traffic.
 ## Validation commands
 
 ```sh
-MBA_BROWSER_TESTS=1 uv run pytest tests/test_browser.py tests/test_library.py tests/test_harness_interfaces.py -q
+MBA_BROWSER_TESTS=1 uv run pytest tests/test_browser.py tests/test_library.py tests/test_harness_interfaces.py tests/test_webmcp.py tests/test_remote_browser.py -q
 uv run pytest -m 'not browser and not linux and not soak' -q
 npm run check --prefix browser-worker
 npm run test:types --prefix harness-client
