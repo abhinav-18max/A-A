@@ -14,7 +14,7 @@ export type MediaPacket = {
 export type ActionStatus = { action_id: string; state: 'accepted' | 'started' | 'completed' | 'cancelled' | 'failed'; accepted_at_us: number; started_at_us?: number | null; ended_at_us?: number | null; error?: string | null };
 export type AdapterEvent = { schema_version: 1; id: string; session_id: string; sequence: number; observed_at_us: number; emitted_at_us: number; type: string; data: Record<string, any> };
 export type WebMCPTool = { name: string; title: string; description: string; input_schema: Record<string, any> | null; page_id: string; frame_id: string; frame_url: string; tool_source: 'site' | 'tester'; [key: string]: unknown };
-export type WebMCPListing = { page_id: string; tools: WebMCPTool[]; blocked_frames: Record<string, string>[]; available?: boolean; site_enabled?: boolean };
+export type WebMCPListing = { page_id: string; tools: WebMCPTool[]; blocked_frames: Record<string, string>[]; available?: boolean; flag_enabled?: boolean };
 export type WebMCPResult = { tool: string; status: 'completed' | 'error' | 'navigated'; result?: unknown; untrusted: true; tool_source: 'site' | 'tester'; [key: string]: unknown };
 export type SiteAdapter = {
     name: string;

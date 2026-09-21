@@ -28000,7 +28000,7 @@ async function callTool(p, frame, name, args, timeoutMs, ids, fail2, calls) {
   if (result === "timeout")
     fail2("webmcp_timeout", `Tool ${name} did not respond within ${timeoutMs} ms`);
   if (result.status === "unavailable")
-    fail2("webmcp_unavailable", "The page does not expose document.modelContext");
+    fail2("webmcp_unavailable", "The page does not expose document.modelContext; start the session with webmcp enabled unless the site is in Chrome's WebMCP origin trial");
   if (result.status === "not_found")
     fail2("webmcp_tool_not_found", `No WebMCP tool named ${name} in this frame`);
   const where = { page_id: ids.page(p), frame_id: ids.frame(frame), document_id: ids.document(frame) };
@@ -28034,6 +28034,7 @@ function preview(value) {
 }
 async function observe(p, pageId, emit2, calls) {
   const frames = /* @__PURE__ */ new Map();
+  const invocations = /* @__PURE__ */ new Map();
   const attach = async (target) => {
     let cdp;
     try {
@@ -28050,8 +28051,15 @@ async function observe(p, pageId, emit2, calls) {
     const summary = (t) => ({ name: t.name, description: String(t.description ?? "").slice(0, 500), annotations: t.annotations ?? {}, cdp_frame_id: t.frameId });
     cdp.on("WebMCP.toolsAdded", (e) => emit2("webmcp.tools_changed", { page_id: pageId, change: "added", tools: e.tools.map(summary) }));
     cdp.on("WebMCP.toolsRemoved", (e) => emit2("webmcp.tools_changed", { page_id: pageId, change: "removed", tools: e.tools.map((t) => ({ name: t.name, cdp_frame_id: t.frameId })) }));
-    cdp.on("WebMCP.toolInvoked", (e) => emit2("webmcp.invoked", { page_id: pageId, tool: e.toolName, invocation_id: e.invocationId, cdp_frame_id: e.frameId, initiator: claim(calls, e.toolName) ? "adapter" : "page", input: preview(e.input), untrusted: true }));
-    cdp.on("WebMCP.toolResponded", (e) => emit2("webmcp.responded", { page_id: pageId, invocation_id: e.invocationId, status: e.status, error: e.errorText, ...e.output === void 0 ? {} : { output: preview(e.output) }, untrusted: true }));
+    cdp.on("WebMCP.toolInvoked", (e) => {
+      invocations.set(e.invocationId, e.toolName);
+      emit2("webmcp.invoked", { page_id: pageId, tool: e.toolName, invocation_id: e.invocationId, cdp_frame_id: e.frameId, initiator: claim(calls, e.toolName) ? "adapter" : "page", tool_source: "site", input: preview(e.input), untrusted: true });
+    });
+    cdp.on("WebMCP.toolResponded", (e) => {
+      const tool = invocations.get(e.invocationId);
+      invocations.delete(e.invocationId);
+      emit2("webmcp.responded", { page_id: pageId, tool, invocation_id: e.invocationId, tool_source: "site", status: e.status, error: e.errorText, ...e.output === void 0 ? {} : { output: preview(e.output) }, untrusted: true });
+    });
     await cdp.send("WebMCP.enable").catch(() => {
     });
   };
@@ -30670,8 +30678,17 @@ var downloads = [];
 var adapters = /* @__PURE__ */ new Map();
 var webmcpCalls = [];
 var dialogPolicies = /* @__PURE__ */ new WeakMap();
-var listeners = /* @__PURE__ */ new Set();
+var listeners = /* @__PURE__ */ new Map();
 var pending = [];
+function deliver(call, listener) {
+  listener.blocked = false;
+  while (listener.backlog.length)
+    if (!call.write(listener.backlog.shift())) {
+      listener.blocked = true;
+      call.once("drain", () => deliver(call, listener));
+      return;
+    }
+}
 function fail(code, message = code) {
   throw new Error(JSON.stringify({ code, message }));
 }
@@ -30684,11 +30701,17 @@ function emit(type, data, at = now()) {
     }
     pending.push(event);
   }
-  for (const call of listeners)
-    if (!call.write(event)) {
+  for (const [call, listener] of listeners) {
+    if (listener.backlog.length >= 1e3) {
+      fault = "observation_overrun";
       call.destroy(new Error("observation consumer too slow"));
       listeners.delete(call);
+      continue;
     }
+    listener.backlog.push(event);
+    if (!listener.blocked)
+      deliver(call, listener);
+  }
 }
 function frameId(frame) {
   if (!frameIds.has(frame))
@@ -30750,8 +30773,7 @@ function track(p) {
     }
   });
   emit("browser.page_created", { page_id: id });
-  if (config.webmcp)
-    void observe(p, id, emit, webmcpCalls);
+  void observe(p, id, emit, webmcpCalls);
 }
 function surface(p, frame) {
   return frame ? p.frameLocator(frame) : p;
@@ -31000,14 +31022,8 @@ async function command(req) {
     }
     case "webmcp_tools": {
       const where = { page_id: pageIds.get(p), frame_id: frameId(p.mainFrame()), document_id: documentId(p.mainFrame()), frame_url: p.url() };
-      const tester = testerTools(adapters, p.url(), where);
-      if (!config.webmcp) {
-        if (!tester.length)
-          fail("webmcp_disabled", "Start the session with webmcp enabled or register a site adapter");
-        return { page_id: where.page_id, document_id: where.document_id, site_enabled: false, available: false, tools: tester, blocked_frames: [] };
-      }
       const listing = await listTools(p, webmcpIds);
-      return { ...listing, site_enabled: true, tools: [...listing.tools, ...tester] };
+      return { ...listing, flag_enabled: !!config.webmcp, tools: [...listing.tools, ...testerTools(adapters, p.url(), where)] };
     }
     case "webmcp_call": {
       const source = options.source || "";
@@ -31019,8 +31035,6 @@ async function command(req) {
       }
       if (source === "tester")
         fail("webmcp_tool_not_found", `No site adapter tool named ${req.value} for this page`);
-      if (!config.webmcp)
-        fail("webmcp_disabled", "Start the session with webmcp enabled to call page tools");
       return callTool(p, selectedFrame, req.value, options.arguments, req.timeoutMs || 3e4, webmcpIds, fail, webmcpCalls);
     }
     case "calibration": {
@@ -31090,7 +31104,7 @@ function stop() {
     }
     await browser?.close();
     console.error("shutdown: completed");
-    for (const call of listeners)
+    for (const call of listeners.keys())
       call.end();
     listeners.clear();
   })();
@@ -31173,14 +31187,11 @@ var service = {
   }),
   command: unary(async (req) => ({ json: JSON.stringify(await dispatch(req)), data: Buffer.alloc(0) })),
   observe(call) {
-    listeners.add(call);
-    for (const event of pending.splice(0))
-      if (!call.write(event)) {
-        call.destroy(new Error("observation backlog exceeded"));
-        break;
-      }
+    const listener = { backlog: pending.splice(0), blocked: false };
+    listeners.set(call, listener);
     call.on("cancelled", () => listeners.delete(call));
     call.on("close", () => listeners.delete(call));
+    deliver(call, listener);
   },
   health: unary(async () => {
     if (fault)

@@ -125,7 +125,7 @@ export async function callTool(p: Page, frame: Frame | undefined, name: string, 
     if (result === 'timeout')
         fail('webmcp_timeout', `Tool ${name} did not respond within ${timeoutMs} ms`);
     if (result.status === 'unavailable')
-        fail('webmcp_unavailable', 'The page does not expose document.modelContext');
+        fail('webmcp_unavailable', 'The page does not expose document.modelContext; start the session with webmcp enabled unless the site is in Chrome\'s WebMCP origin trial');
     if (result.status === 'not_found')
         fail('webmcp_tool_not_found', `No WebMCP tool named ${name} in this frame`);
     const where = { page_id: ids.page(p), frame_id: ids.frame(frame), document_id: ids.document(frame) };
@@ -156,6 +156,7 @@ function preview(value: unknown) {
 // Journals tool registration and every invocation, including ones made by the page's own code.
 export async function observe(p: Page, pageId: string, emit: Emit, calls: Pending) {
     const frames = new Map<Frame, CDPSession>();
+    const invocations = new Map<string, string>();
     const attach = async (target: Page | Frame) => {
         let cdp: CDPSession;
         try {
@@ -173,8 +174,16 @@ export async function observe(p: Page, pageId: string, emit: Emit, calls: Pendin
         const summary = (t: any) => ({ name: t.name, description: String(t.description ?? '').slice(0, 500), annotations: t.annotations ?? {}, cdp_frame_id: t.frameId });
         cdp.on('WebMCP.toolsAdded', (e: any) => emit('webmcp.tools_changed', { page_id: pageId, change: 'added', tools: e.tools.map(summary) }));
         cdp.on('WebMCP.toolsRemoved', (e: any) => emit('webmcp.tools_changed', { page_id: pageId, change: 'removed', tools: e.tools.map((t: any) => ({ name: t.name, cdp_frame_id: t.frameId })) }));
-        cdp.on('WebMCP.toolInvoked', (e: any) => emit('webmcp.invoked', { page_id: pageId, tool: e.toolName, invocation_id: e.invocationId, cdp_frame_id: e.frameId, initiator: claim(calls, e.toolName) ? 'adapter' : 'page', input: preview(e.input), untrusted: true }));
-        cdp.on('WebMCP.toolResponded', (e: any) => emit('webmcp.responded', { page_id: pageId, invocation_id: e.invocationId, status: e.status, error: e.errorText, ...(e.output === undefined ? {} : { output: preview(e.output) }), untrusted: true }));
+        cdp.on('WebMCP.toolInvoked', (e: any) => {
+            invocations.set(e.invocationId, e.toolName);
+            emit('webmcp.invoked', { page_id: pageId, tool: e.toolName, invocation_id: e.invocationId, cdp_frame_id: e.frameId, initiator: claim(calls, e.toolName) ? 'adapter' : 'page', tool_source: 'site', input: preview(e.input), untrusted: true });
+        });
+        cdp.on('WebMCP.toolResponded', (e: any) => {
+            // DevTools reports only the invocation ID here; name the tool so events stand alone.
+            const tool = invocations.get(e.invocationId);
+            invocations.delete(e.invocationId);
+            emit('webmcp.responded', { page_id: pageId, tool, invocation_id: e.invocationId, tool_source: 'site', status: e.status, error: e.errorText, ...(e.output === undefined ? {} : { output: preview(e.output) }), untrusted: true });
+        });
         await cdp.send('WebMCP.enable' as any).catch(() => { });
     };
     await attach(p);

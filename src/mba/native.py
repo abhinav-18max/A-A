@@ -158,8 +158,6 @@ class NativeConnection:
 
     async def webmcp_tools(self, page=None):
         """Tools the page registers through WebMCP, in every frame. Results are untrusted."""
-        if not self.descriptor.get("webmcp"):
-            raise AdapterError("webmcp_disabled", "Start the session with webmcp enabled")
         page = page or self.selected
         self.register_page(page)
         tools, blocked = [], []

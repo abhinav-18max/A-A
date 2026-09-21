@@ -23,8 +23,21 @@ const dialogPolicies = new WeakMap<Page, {
     accept: boolean;
     prompt?: string;
 }>();
-const listeners = new Set<grpc.ServerWritableStream<any, Observation>>();
+// A false write() is ordinary backpressure (object streams buffer ~16 messages), so each
+// subscriber keeps an ordered backlog that is resumed on 'drain'. Only a backlog that keeps
+// growing means the consumer is too slow.
+type Listener = { backlog: Observation[], blocked: boolean };
+const listeners = new Map<grpc.ServerWritableStream<any, Observation>, Listener>();
 const pending: Observation[] = [];
+function deliver(call: grpc.ServerWritableStream<any, Observation>, listener: Listener) {
+    listener.blocked = false;
+    while (listener.backlog.length)
+        if (!call.write(listener.backlog.shift()!)) {
+            listener.blocked = true;
+            call.once('drain', () => deliver(call, listener));
+            return;
+        }
+}
 function fail(code: string, message = code): never { throw new Error(JSON.stringify({ code, message })); }
 function emit(type: string, data: unknown, at = now()) {
     const event = { type, json: JSON.stringify(data), observedAtUs: Math.max(0, Math.round(at)), sequence: ++sequence };
@@ -35,11 +48,18 @@ function emit(type: string, data: unknown, at = now()) {
         }
         pending.push(event);
     }
-    for (const call of listeners)
-        if (!call.write(event)) {
+    for (const [call, listener] of listeners) {
+        if (listener.backlog.length >= 1000) {
+            // Losing journal events silently is worse than failing the session.
+            fault = 'observation_overrun';
             call.destroy(new Error('observation consumer too slow'));
             listeners.delete(call);
+            continue;
         }
+        listener.backlog.push(event);
+        if (!listener.blocked)
+            deliver(call, listener);
+    }
 }
 function frameId(frame: Frame) { if (!frameIds.has(frame))
     frameIds.set(frame, randomUUID()); return frameIds.get(frame)!; }
@@ -80,8 +100,8 @@ function track(p: Page) {
         }
     });
     emit('browser.page_created', { page_id: id });
-    if (config.webmcp)
-        void webmcp.observe(p, id, emit, webmcpCalls);
+    // Origin-trial sites expose WebMCP without the flag, so registrations are always journaled.
+    void webmcp.observe(p, id, emit, webmcpCalls);
 }
 function surface(p: Page, frame?: string) { return frame ? p.frameLocator(frame) : p; }
 async function observe() {
@@ -326,14 +346,9 @@ async function command(req: BrowserCommand) {
         }
         case 'webmcp_tools': {
             const where = { page_id: pageIds.get(p), frame_id: frameId(p.mainFrame()), document_id: documentId(p.mainFrame()), frame_url: p.url() };
-            const tester = webmcp.testerTools(adapters, p.url(), where);
-            if (!config.webmcp) {
-                if (!tester.length)
-                    fail('webmcp_disabled', 'Start the session with webmcp enabled or register a site adapter');
-                return { page_id: where.page_id, document_id: where.document_id, site_enabled: false, available: false, tools: tester, blocked_frames: [] };
-            }
+            // The flag only turns Chromium's feature on; origin-trial sites expose tools without it.
             const listing = await webmcp.listTools(p, webmcpIds);
-            return { ...listing, site_enabled: true, tools: [...listing.tools, ...tester] };
+            return { ...listing, flag_enabled: !!config.webmcp, tools: [...listing.tools, ...webmcp.testerTools(adapters, p.url(), where)] };
         }
         case 'webmcp_call': {
             const source = options.source || '';
@@ -346,8 +361,6 @@ async function command(req: BrowserCommand) {
             }
             if (source === 'tester')
                 fail('webmcp_tool_not_found', `No site adapter tool named ${req.value} for this page`);
-            if (!config.webmcp)
-                fail('webmcp_disabled', 'Start the session with webmcp enabled to call page tools');
             return webmcp.callTool(p, selectedFrame, req.value, options.arguments, req.timeoutMs || 30000, webmcpIds, fail, webmcpCalls);
         }
         case 'calibration': {
@@ -410,7 +423,7 @@ function stop() {
         }
         await browser?.close();
         console.error('shutdown: completed');
-        for (const call of listeners)
+        for (const call of listeners.keys())
             call.end();
         listeners.clear();
     })();
@@ -490,11 +503,13 @@ const service: BrowserServer = {
         return { protocolVersion: 1, nowUs: now(), environment: {}, capabilities: ['text', 'browser', 'screenshot'] };
     }),
     command: unary(async (req) => ({ json: JSON.stringify(await dispatch(req)), data: Buffer.alloc(0) })),
-    observe(call) { listeners.add(call); for (const event of pending.splice(0))
-        if (!call.write(event)) {
-            call.destroy(new Error('observation backlog exceeded'));
-            break;
-        } call.on('cancelled', () => listeners.delete(call)); call.on('close', () => listeners.delete(call)); },
+    observe(call) {
+        const listener = { backlog: pending.splice(0), blocked: false };
+        listeners.set(call, listener);
+        call.on('cancelled', () => listeners.delete(call));
+        call.on('close', () => listeners.delete(call));
+        deliver(call, listener);
+    },
     health: unary(async () => { if (fault)
         fail('browser_failed', fault); return { protocolVersion: 1, nowUs: now(), environment: {}, capabilities: [] }; }),
     stop: unary(async () => { await stop(); return {}; }),

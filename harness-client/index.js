@@ -139,8 +139,6 @@ export class NativeConnection {
     frameId(frame) { if (!this.frameIds.has(frame))
         this.frameIds.set(frame, randomUUID()); return this.frameIds.get(frame); }
     async webmcpTools(page = this.selected) {
-        if (!this.descriptor.webmcp)
-            throw media.adapterError('webmcp_disabled', 'Start the session with webmcp enabled');
         this.registerPage(page);
         const tools = [], blocked = [];
         for (const frame of page.frames()) {

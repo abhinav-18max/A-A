@@ -78,13 +78,18 @@ async def tools(session, names):
             await asyncio.sleep(0.05)
 
 
-async def test_disabled_by_default(tmp_path):
-    async with Adapter(SessionConfig(recording=False), artifact_dir=tmp_path) as session:
-        capabilities = await session.capabilities()
-        assert not capabilities["webmcp"]["enabled"]
-        with pytest.raises(AdapterError) as error:
-            await session.webmcp.tools()
-        assert error.value.code == "webmcp_disabled"
+async def test_flag_off_by_default_and_page_without_webmcp(tmp_path):
+    async with website() as url:
+        config = SessionConfig(recording=False, target_url=url + "/tools")
+        async with Adapter(config, artifact_dir=tmp_path) as session:
+            assert not (await session.capabilities())["webmcp"]["enabled"]
+            # Without the flag (and without an origin-trial token) the page has no WebMCP API,
+            # so its registerTool calls are no-ops: listing is empty rather than an error.
+            listing = await session.webmcp.tools()
+            assert listing == {**listing, "available": False, "flag_enabled": False, "tools": []}
+            with pytest.raises(AdapterError) as error:
+                await session.webmcp.call("add_numbers", {"a": 1, "b": 2})
+            assert error.value.code == "webmcp_unavailable"
 
 
 async def test_list_call_limits_and_journal(tmp_path):
@@ -130,7 +135,11 @@ async def test_list_call_limits_and_journal(tmp_path):
             added = [e for e in events if e.type == "webmcp.tools_changed"]
             assert any(t["name"] == "add_numbers" for e in added for t in e.data["tools"])
             responded = [e for e in events if e.type == "webmcp.responded"]
-            assert any(e.data["status"] == "Completed" for e in responded)
+            assert any(
+                e.data["status"] == "Completed" and e.data["tool"] == "add_numbers"
+                for e in responded
+            )
+            assert {e.data["tool_source"] for e in invoked + responded} == {"site"}
             assert all(e.observed_at_us > 0 for e in invoked + responded)
 
 
@@ -204,7 +213,7 @@ async def test_site_adapter_on_a_page_without_webmcp(tmp_path):
             registered = await session.webmcp.add_adapter(adapter(url))
             assert registered["tools"] == ["say"]
             listing = await session.webmcp.tools()
-            assert not listing["site_enabled"]
+            assert not listing["flag_enabled"] and not listing["available"]
             (tool,) = listing["tools"]
             assert tool["tool_source"] == "tester" and tool["adapter"] == "fixture"
             result = await session.webmcp.call("say", {"text": "hello adapter"})
@@ -215,15 +224,13 @@ async def test_site_adapter_on_a_page_without_webmcp(tmp_path):
             assert error.value.code == "webmcp_missing_argument"
             with pytest.raises(AdapterError) as error:
                 await session.webmcp.call("say", {"text": "x"}, source="site")
-            assert error.value.code == "webmcp_disabled"
+            assert error.value.code == "webmcp_unavailable"
             events = [e for e in session.core.evidence.read(0) if e.type.startswith("webmcp.")]
             assert [e.data["tool_source"] for e in events[:2]] == ["tester", "tester"]
             assert events[1].data["status"] == "Completed"
 
             await session.browser.open(url + "/plain")
-            with pytest.raises(AdapterError) as error:
-                await session.webmcp.tools()  # URL pattern no longer matches
-            assert error.value.code == "webmcp_disabled"
+            assert (await session.webmcp.tools())["tools"] == []  # URL pattern no longer matches
             assert (await session.webmcp.remove_adapter("fixture"))["adapters"] == []
 
 
@@ -361,3 +368,33 @@ async def test_typescript_native_webmcp(worker_endpoint):
         stdout, stderr = await asyncio.wait_for(process.communicate(), 60)
         assert process.returncode == 0, stderr.decode()
         assert "PASS" in stdout.decode()
+
+
+PAGES["/many"] = "".join(register(f"tool_{i}", "return 'ok';") for i in range(40))
+
+
+async def test_event_bursts_reach_the_journal(tmp_path):
+    # Object-mode gRPC streams report backpressure after ~16 queued messages; a burst of
+    # tool registrations during startup must not end the observation stream.
+    async with website() as url:
+        config = SessionConfig(recording=False, webmcp=True, target_url=url + "/many")
+        async with Adapter(config, artifact_dir=tmp_path) as session:
+            await tools(session, {f"tool_{i}" for i in range(40)})
+            await session.browser.open(url + "/plain")
+            async with asyncio.timeout(5):
+                while True:
+                    events = session.core.evidence.read(0)
+                    added = {
+                        t["name"]
+                        for e in events
+                        if e.type == "webmcp.tools_changed" and e.data["change"] == "added"
+                        for t in e.data["tools"]
+                    }
+                    navigated = any(
+                        e.type == "browser.navigation" and e.data["url"].endswith("/plain")
+                        for e in events
+                    )
+                    if len(added) == 40 and navigated:
+                        break
+                    await asyncio.sleep(0.05)
+            assert (await session.capabilities())["webmcp"]["enabled"]
