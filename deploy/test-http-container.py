@@ -74,5 +74,5 @@ async def main(image):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image", default="mba-worker:0.2.0-arm64")
+    parser.add_argument("--image", default="mba-worker:0.3.0-arm64")
     asyncio.run(main(parser.parse_args().image))

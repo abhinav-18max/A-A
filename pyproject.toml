@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "multimodal-browser-adapter"
-version = "0.2.0"
+version = "0.3.0"
 description = "Isolated browser execution and timestamped multimodal evidence"
 requires-python = ">=3.12,<3.14"
 dependencies = ["pydantic==2.11.4", "grpcio==1.84.0", "protobuf==7.36.2"]
 
 [project.optional-dependencies]
-native = ["playwright==1.51.0"]
+native = ["playwright==1.63.0"]
 mcp = ["mcp==1.28.0"]
 remote = ["fastapi==0.115.12", "uvicorn==0.34.2", "httpx==0.28.1", "websockets==15.0.1"]
 dev = ["pytest==8.3.5", "pytest-asyncio==0.26.0", "ruff==0.11.9", "grpcio-tools==1.84.0", "fastapi==0.115.12", "uvicorn==0.34.2", "httpx==0.28.1", "websockets==15.0.1"]

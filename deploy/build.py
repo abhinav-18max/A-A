@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--tag", default="mba-worker:0.2.0")
+parser.add_argument("--tag", default="mba-worker:0.3.0")
 parser.add_argument("--base", default="ubuntu:24.04")
 parser.add_argument("--platform", choices=["linux/amd64", "linux/arm64"], default="linux/amd64")
 args = parser.parse_args()

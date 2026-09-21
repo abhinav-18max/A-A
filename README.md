@@ -49,7 +49,7 @@ uv run mba setup --browser
 ```
 
 For a built wheel, install it and run `mba setup --browser`. Setup explicitly installs
-locked Node dependencies and Chromium into `~/.cache/mba/0.2.0`. Nothing is downloaded
+locked Node dependencies and Chromium into `~/.cache/mba/0.3.0`. Nothing is downloaded
 when importing the library or starting a session. Override the location with
 `MBA_RUNTIME_DIR`; use the same location when running setup.
 
@@ -279,7 +279,7 @@ portable protocol tests and produces no usable media backend. `tools/package_run
 builds a Linux release archive and prints its checksum. Install that explicitly with:
 
 ```sh
-mba setup --media-archive dist/mba-media-0.2.0-linux-x86_64.tar.gz --sha256 CHECKSUM
+mba setup --media-archive dist/mba-media-0.3.0-linux-x86_64.tar.gz --sha256 CHECKSUM
 ```
 
 On a prepared Linux host, run `tests/test_linux.py` for full virtual-device integration,

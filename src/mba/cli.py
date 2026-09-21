@@ -39,7 +39,7 @@ def main():
     for name in ("serve", "preflight"):
         command = sub.add_parser(name)
         command.add_argument("--root", type=Path, default=Path("artifacts"))
-        command.add_argument("--image", default="mba-worker:0.2.0")
+        command.add_argument("--image", default="mba-worker:0.3.0")
         command.add_argument("--cameras", default="/dev/video10,/dev/video11")
         command.add_argument("--seccomp", default="deploy/seccomp.json")
         command.add_argument("--host", default="127.0.0.1")

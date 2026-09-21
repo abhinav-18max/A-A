@@ -1,8 +1,9 @@
-`seccomp.json` is the Playwright v1.51.0 Docker seccomp profile:
-https://github.com/microsoft/playwright/blob/v1.51.0/utils/docker/seccomp_profile.json
+`seccomp.json` is the Playwright v1.63.0 Docker seccomp profile (upstream is unchanged since
+v1.51.0):
+https://github.com/microsoft/playwright/blob/v1.63.0/utils/docker/seccomp_profile.json
 
 Playwright is Copyright Microsoft Corporation and contributors, licensed under
-Apache License 2.0: https://github.com/microsoft/playwright/blob/v1.51.0/LICENSE
+Apache License 2.0: https://github.com/microsoft/playwright/blob/v1.63.0/LICENSE
 
 The profile retains Docker's deny-by-default syscall policy and the upstream
 user-namespace allowances. It is not a seccomp-unconfined configuration.

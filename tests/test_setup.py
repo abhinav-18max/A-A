@@ -6,10 +6,10 @@ import tarfile
 
 import pytest
 
-from mba.setup import install
+from mba.setup import VERSION, install
 
 
-def archive(tmp_path, version="0.2.0", extra=None):
+def archive(tmp_path, version=VERSION, extra=None):
     path = tmp_path / "runtime.tar.gz"
     rows = {
         "mba-media": b"test binary",

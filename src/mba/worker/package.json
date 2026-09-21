@@ -1,6 +1,6 @@
 {
   "name": "@mba/browser-worker",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
   "dependencies": {
     "@bufbuild/protobuf": "2.9.0",
     "@grpc/grpc-js": "1.14.0",
-    "playwright": "1.51.0",
+    "playwright": "1.63.0",
     "ws": "8.18.3"
   },
   "devDependencies": {

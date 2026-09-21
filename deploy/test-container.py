@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--image", default="mba-worker:0.2.0-arm64")
+parser.add_argument("--image", default="mba-worker:0.3.0-arm64")
 parser.add_argument("--script", type=Path, default=Path("tools/container_smoke.py"))
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[1]

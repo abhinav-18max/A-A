@@ -22,7 +22,7 @@ are rejected without disturbing that connection. Native disconnection ends the
 session. A lost page/conversation is never silently recreated.
 
 Full native compatibility requires the installed Playwright client and server to
-share a major/minor version. This release is tested with **1.51.0**. A harness that
+share a major/minor version. This release is tested with **1.63.0** (Chromium 153). A harness that
 hardcodes launching its own browser must be configured or adapted to connect instead.
 There is no universal redirect of another harness's Playwright calls.
 In native mode, use the raw `Page.screenshot()` for a browser screenshot; the worker's
@@ -44,7 +44,7 @@ npm ci --prefix harness-client
 The `native`, `remote`, and `mcp` extras are optional. Base library import and tools
 mode do not import Python Playwright or MCP. The TypeScript helper package is in
 `harness-client/`; install that local package in the harness project together with
-`playwright@1.51.0`. Native Linux workers do not need the Python Playwright client or
+`playwright@1.63.0`. Native Linux workers do not need the Python Playwright client or
 an MCP server installed inside their image.
 
 Full display recording is enabled by default, so normal sessions run on the Linux

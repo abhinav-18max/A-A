@@ -210,7 +210,16 @@ async def main():
                 name = process.read_text().strip()
             except FileNotFoundError:
                 continue
-            if name in {"mba-media", "node", "chrome", "Xvfb", "openbox", "pulseaudio"}:
+            if name in {
+                "mba-media",
+                "node",
+                "chrome",
+                "chrome-headless",
+                "headless_shell",
+                "Xvfb",
+                "openbox",
+                "pulseaudio",
+            }:
                 leaked.append((process.parent.name, name))
         assert not leaked, leaked
         print("PASS: no browser, media, display, or audio processes remain", flush=True)

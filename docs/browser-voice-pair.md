@@ -12,7 +12,7 @@ One browser hosts ChatGPT Voice; the other hosts Docket. This is an interactive
 adapter test, not a scenario engine or a vendor API connector.
 
 The optional `deploy/Dockerfile.viewer` adds Ubuntu's noVNC, websockify and x11vnc
-packages to `mba-worker:0.2.0-arm64`. Each browser has a password-protected viewer.
+packages to `mba-worker:0.3.0-arm64`. Each browser has a password-protected viewer.
 Publish container ports 6080 and 6081 **only on host 127.0.0.1**; never publish
 the VNC ports. Keep the artifact mount private to the host user.
 

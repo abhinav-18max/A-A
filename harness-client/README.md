@@ -1,7 +1,7 @@
 # @mba/harness-client
 
 External native Playwright setup for an A&A worker. Requires Node.js 22+ and
-Playwright 1.51.x (tested at 1.51.0). The helper returns raw Playwright objects.
+Playwright 1.63.x (tested at 1.63.0). The helper returns raw Playwright objects.
 
 ```typescript
 import {Client} from '@mba/harness-client';

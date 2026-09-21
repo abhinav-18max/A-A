@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, Header, Request, WebSocket, WebSocketDisco
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from websockets.asyncio.client import connect
 
+from mba import __version__
 from mba.evidence import atomic_json
 from mba.protocol import AdapterError, Event, SessionConfig, new_id
 
@@ -333,7 +334,7 @@ def create_controller_app(controller: Controller):
         finally:
             await controller.close()
 
-    app = FastAPI(title="Multimodal Browser Adapter", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Multimodal Browser Adapter", version=__version__, lifespan=lifespan)
 
     @app.exception_handler(AdapterError)
     async def adapter_error(request, exc):

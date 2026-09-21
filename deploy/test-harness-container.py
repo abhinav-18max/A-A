@@ -255,7 +255,8 @@ async def main(image):
                 "python",
                 "-c",
                 "from pathlib import Path; import json; "
-                "names={'node','chrome','chromium','headless_shell','mba-media','Xvfb','openbox','pulseaudio'}; "
+                "names={'node','chrome','chromium','chrome-headless','headless_shell',"
+                "'mba-media','Xvfb','openbox','pulseaudio'}; "
                 "print(json.dumps([p.parent.name+':'+p.read_text().strip() "
                 "for p in Path('/proc').glob('[0-9]*/comm') if p.read_text().strip() in names]))",
             )

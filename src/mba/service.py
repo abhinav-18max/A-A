@@ -10,6 +10,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Header, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 
+from mba import __version__
 from mba.protocol import (
     Action,
     AdapterError,
@@ -37,7 +38,7 @@ def create_worker_app(root: Path, token: str, runtime_factory=None, session_id: 
         for session in sessions.values():
             await session.stop()
 
-    app = FastAPI(title="Multimodal Browser Adapter worker", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Multimodal Browser Adapter worker", version=__version__, lifespan=lifespan)
     app.state.sessions = sessions
     app.state.streams = streams
 

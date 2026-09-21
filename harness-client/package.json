@@ -1,6 +1,6 @@
 {
   "name": "@mba/harness-client",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "files": [
     "index.js",
@@ -10,10 +10,10 @@
   "main": "index.js",
   "types": "index.d.ts",
   "peerDependencies": {
-    "playwright": "1.51.x"
+    "playwright": "1.63.x"
   },
   "devDependencies": {
-    "playwright": "1.51.0",
+    "playwright": "1.63.0",
     "typescript": "5.9.3",
     "@types/node": "22.18.6"
   },

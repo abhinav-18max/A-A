@@ -1,4 +1,4 @@
-# A&A protocols — library 0.2.0
+# A&A protocols — library 0.3.0
 
 ## Internal process contract
 

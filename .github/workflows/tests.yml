@@ -32,11 +32,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: uv sync --locked --extra dev --python 3.12
+      - run: uv sync --locked --extra dev --extra native --extra mcp --python 3.12
       - run: npm ci --prefix browser-worker
+      - run: npm ci --prefix harness-client
       - run: uv run python tools/browser_build.py
+      - run: npm run test:types --prefix harness-client
       - run: npx --prefix browser-worker playwright install --with-deps chromium
-      - run: MBA_BROWSER_TESTS=1 uv run pytest tests/test_browser.py tests/test_library.py -q
+      - run: MBA_BROWSER_TESTS=1 uv run pytest tests/test_browser.py tests/test_library.py tests/test_harness_interfaces.py -q
   media:
     runs-on: ubuntu-24.04
     steps:
@@ -62,8 +64,8 @@ jobs:
           version: '0.12.16'
       - run: uv sync --locked --extra dev --python 3.12
       - run: uv run python deploy/build.py
-      - run: uv run python deploy/test-container.py --image mba-worker:0.2.0
-      - run: uv run python deploy/test-http-container.py --image mba-worker:0.2.0
+      - run: uv run python deploy/test-container.py --image mba-worker:0.3.0
+      - run: uv run python deploy/test-http-container.py --image mba-worker:0.3.0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
