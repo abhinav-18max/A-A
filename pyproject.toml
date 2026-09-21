@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "multimodal-browser-adapter"
+version = "0.2.0"
+description = "Isolated browser execution and timestamped multimodal evidence"
+requires-python = ">=3.12,<3.14"
+dependencies = ["pydantic==2.11.4", "grpcio==1.84.0", "protobuf==7.36.2"]
+
+[project.optional-dependencies]
+native = ["playwright==1.51.0"]
+mcp = ["mcp==1.28.0"]
+remote = ["fastapi==0.115.12", "uvicorn==0.34.2", "httpx==0.28.1", "websockets==15.0.1"]
+dev = ["pytest==8.3.5", "pytest-asyncio==0.26.0", "ruff==0.11.9", "grpcio-tools==1.84.0", "fastapi==0.115.12", "uvicorn==0.34.2", "httpx==0.28.1", "websockets==15.0.1"]
+
+[project.scripts]
+mba = "mba.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mba"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = ["linux: requires prepared Linux worker and virtual camera", "soak: long-running hardware acceptance", "browser: requires installed Chromium"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/mba/generated/*" = ["ALL"]
+
+[tool.ruff.format]
+exclude = ["src/mba/generated/*"]

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Adapter calibration harness</title>
+<style>
+body{font:16px system-ui;background:#17202d;color:#edf4ff;margin:24px}button,input{font:inherit;padding:8px;margin:4px}
+video,canvas{width:320px;height:180px;background:#000}#ready{display:none;color:#87efb0}.row{display:flex;gap:16px}
+#messages{max-height:180px;overflow:auto}.message{padding:8px;border-bottom:1px solid #465166}
+</style>
+<h1>Multimodal calibration</h1>
+<button id="join">Start devices</button><button id="leave">Stop devices</button>
+<span id="ready">Ready</span><span id="status">Idle</span>
+<div class="row"><div>Camera<br><video id="camera" autoplay muted playsinline></video></div>
+<div>Rendered marker<br><canvas id="marker" width="640" height="360"></canvas></div>
+<div>Loopback WebRTC<br><video id="remote" autoplay muted playsinline></video></div></div>
+<input id="composer" placeholder="Message"><button id="send">Send</button>
+<div id="messages"></div><pre id="metrics"></pre>
+<script>
+const $=id=>document.getElementById(id);
+let stream, ctx, analyser, tick, n=0, pcs=[];
+window.harness={ready:false,settings:{},audio:[],frames:[],cameraFrames:[],responses:[],peerReady:false};
+const h=window.harness;
+function message(role,text,id){let el=document.createElement('div');el.className='message';el.dataset.role=role;el.dataset.messageId=id;el.innerText=text;$('messages').append(el);return el;}
+function send(){const value=$('composer').value;if(!value)return;message('user',value,`u${++n}`);$('composer').value='';const m=message('assistant','Acknowledging…',`a${n}`);setTimeout(()=>m.innerText=`Received: ${value}`,150);}
+$('send').onclick=send;$('composer').onkeydown=e=>{if(e.key==='Enter')send()};
+h.tone=(hz=997,durationMs=300,delayMs=0)=>{const at=ctx.currentTime+delayMs/1000;const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=hz;g.gain.value=.15;o.connect(g).connect(ctx.destination);o.start(at);o.stop(at+durationMs/1000);h.responses.push({hz,durationMs,at:performance.now()+delayMs});};
+h.visual=(id,color='#38bdf8')=>{const c=$('marker').getContext('2d');c.fillStyle=color;c.fillRect(0,0,640,360);c.fillStyle='black';c.font='60px monospace';c.fillText(String(id),40,180);h.frames.push({id,at:performance.now()});};
+h.clock=()=>performance.now();
+h.snapshot=()=>({now:performance.now(),ready:h.ready,settings:h.settings,audio:h.audio,frames:h.frames,cameraFrames:h.cameraFrames,responses:h.responses,peerReady:h.peerReady});
+async function peer(){const a=new RTCPeerConnection(),b=new RTCPeerConnection();pcs=[a,b];a.onicecandidate=e=>e.candidate&&b.addIceCandidate(e.candidate);b.onicecandidate=e=>e.candidate&&a.addIceCandidate(e.candidate);b.ontrack=e=>{$('remote').srcObject=e.streams[0];h.peerReady=true};stream.getTracks().forEach(t=>a.addTrack(t,stream));await a.setLocalDescription(await a.createOffer());await b.setRemoteDescription(a.localDescription);await b.setLocalDescription(await b.createAnswer());await a.setRemoteDescription(b.localDescription);}
+$('join').onclick=async()=>{try{
+stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:{width:1280,height:720,frameRate:30}});
+$('camera').srcObject=stream;await $('camera').play();ctx=new AudioContext({sampleRate:48000});await ctx.resume();
+analyser=ctx.createAnalyser();analyser.fftSize=2048;ctx.createMediaStreamSource(stream).connect(analyser);
+h.settings={audio:stream.getAudioTracks()[0].getSettings(),video:stream.getVideoTracks()[0].getSettings()};
+const data=new Float32Array(analyser.fftSize),freq=new Float32Array(analyser.frequencyBinCount);tick=setInterval(()=>{analyser.getFloatTimeDomainData(data);let rms=Math.sqrt(data.reduce((s,v)=>s+v*v,0)/data.length);analyser.getFloatFrequencyData(freq);let max=-Infinity,bin=0;for(let i=0;i<freq.length;i++){if(freq[i]>max){max=freq[i];bin=i}}h.audio.push({at:performance.now(),rms,hz:bin*ctx.sampleRate/analyser.fftSize});if(h.audio.length>10000)h.audio.shift();$('metrics').innerText=`Mic RMS: ${rms.toFixed(5)} | camera frames: ${$('camera').getVideoPlaybackQuality().totalVideoFrames}`;},20);
+const probe=document.createElement('canvas');probe.width=16;probe.height=16;const pc=probe.getContext('2d',{willReadFrequently:true});function inspectFrame(now,metadata){if(!h.ready)return;pc.drawImage($('camera'),0,0,16,16);const p=pc.getImageData(8,8,1,1).data;h.cameraFrames.push({at:performance.now(),rgb:[p[0],p[1],p[2]],presentedFrames:metadata.presentedFrames});if(h.cameraFrames.length>10000)h.cameraFrames.shift();$('camera').requestVideoFrameCallback(inspectFrame)};
+h.ready=true;$('ready').style.display='inline';$('status').innerText='Connected';h.visual(0);await peer();
+$('camera').requestVideoFrameCallback(inspectFrame);
+}catch(e){$('status').innerText=String(e);h.error=String(e)}};
+$('leave').onclick=()=>{clearInterval(tick);stream?.getTracks().forEach(t=>t.stop());pcs.forEach(p=>p.close());ctx?.close();h.ready=false;$('ready').style.display='none';$('status').innerText='Disconnected'};
+</script></html>

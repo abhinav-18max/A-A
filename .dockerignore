@@ -1,0 +1,14 @@
+.bootstrap
+.python
+.venv
+.cache
+.git
+artifacts
+status-cache.json
+**/__pycache__
+.pytest_cache
+.ruff_cache
+
+**/node_modules
+media-core/target
+dist

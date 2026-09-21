@@ -1,0 +1,24 @@
+{
+  "name": "@mba/browser-worker",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc && esbuild src/main.ts --bundle --platform=node --format=cjs --external:playwright --outfile=../src/mba/worker/main.cjs",
+    "generate": "../.venv/bin/python ../tools/generate.py --typescript",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.9.0",
+    "@grpc/grpc-js": "1.14.0",
+    "playwright": "1.51.0",
+    "ws": "8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.6",
+    "@types/ws": "8.18.1",
+    "esbuild": "0.25.10",
+    "ts-proto": "2.7.7",
+    "typescript": "5.9.3"
+  }
+}

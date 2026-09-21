@@ -1,0 +1,46 @@
+syntax = "proto3";
+package mba.v1;
+
+message Empty {}
+message Hello { uint32 protocol_version = 1; }
+message Ready { uint32 protocol_version = 1; uint64 now_us = 2; map<string,string> environment = 3; repeated string capabilities = 4; }
+message BrowserStart {
+ uint32 protocol_version = 1; bool headless = 2; string target_url = 3;
+ string binding_json = 4; string storage_state_json = 5; repeated string permission_origins = 6;
+ string observer_script = 7; string artifact_root = 8; string harness_html = 9;
+ bool audio = 10; bool camera = 11; bool calibrate = 12;
+ string browser_control = 13; uint32 native_attach_timeout_ms = 14;
+}
+message BrowserCommand { string operation = 1; string selector = 2; string value = 3; uint32 timeout_ms = 4; string frame_selector = 5; string options_json = 6; }
+message BrowserResult { string json = 1; bytes data = 2; }
+message Observation { string type = 1; uint64 observed_at_us = 2; string json = 3; uint64 sequence = 4; }
+service Browser {
+ rpc Start(BrowserStart) returns (Ready);
+ rpc Command(BrowserCommand) returns (BrowserResult);
+ rpc Observe(Empty) returns (stream Observation);
+ rpc Health(Empty) returns (Ready);
+ rpc Stop(Empty) returns (Empty);
+}
+message MediaStart {
+ uint32 protocol_version = 1; bool audio = 2; bool camera = 3; bool visual = 4;
+ string camera_device = 5; string root = 6; bool recording = 7;
+}
+message MediaFormat { string kind = 1; string encoding = 2; uint32 rate = 3; uint32 channels = 4; uint32 width = 5; uint32 height = 6; uint32 fps = 7; }
+message Track { string action_id = 1; string kind = 2; string path = 3; string stream_id = 4; MediaFormat format = 5; uint64 start_us = 6; }
+message ActionRef { string action_id = 1; }
+message MediaPacket { string stream_id = 1; uint64 sequence = 2; uint64 pts_us = 3; bytes data = 4; MediaFormat format = 5; bool discontinuity = 6; bool end = 7; }
+message CaptureRequest { string kind = 1; uint32 channels = 2; uint32 fps = 3; }
+message RecordingRequest { bool enabled = 1; }
+service Media {
+ rpc Start(MediaStart) returns (Ready);
+ rpc Health(Empty) returns (Ready);
+ rpc Prepare(Track) returns (Empty);
+ rpc Play(Track) returns (Empty);
+ rpc Cancel(ActionRef) returns (Empty);
+ rpc Release(ActionRef) returns (Empty);
+ rpc Input(stream MediaPacket) returns (Empty);
+ rpc Capture(CaptureRequest) returns (stream MediaPacket);
+ rpc Observe(Empty) returns (stream Observation);
+ rpc Record(RecordingRequest) returns (Empty);
+ rpc Stop(Empty) returns (Empty);
+}
