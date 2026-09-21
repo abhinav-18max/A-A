@@ -35,6 +35,8 @@ setInterval(()=>{analyser.getFloatTimeDomainData(data);let crossings=0;for(let i
 window.probes.push({rms:Math.sqrt(data.reduce((s,x)=>s+x*x,0)/data.length),hz:crossings*48000/2048});},50);
 document.querySelector('#status').textContent='Ready';};
 document.querySelector('#tone').onclick=()=>{const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=997;g.gain.value=.2;o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+1);};
+document.modelContext?.registerTool({name:'probe_count',description:'Microphone probes so far',
+inputSchema:{type:'object',properties:{}},execute:async()=>String(window.probes.length)});
 </script>"""
 
 
@@ -60,6 +62,7 @@ async def main(image):
                     browser_control="native",
                     mode="audio",
                     camera=False,
+                    webmcp=True,
                     permission_origins=["https://fixture.invalid"],
                 )
             )
@@ -72,6 +75,13 @@ async def main(image):
                 await native.page.locator("#join").click()
                 await native.page.get_by_text("Ready", exact=True).wait_for()
                 report["checks"].append("external native browser setup and microphone permission")
+                tools = await native.webmcp_tools(native.page)
+                assert [t["name"] for t in tools["tools"]] == ["probe_count"], tools
+                called = await native.webmcp_call(native.page, "probe_count")
+                assert called["status"] == "completed" and int(called["result"]) >= 0, called
+                report["checks"].append(
+                    "WebMCP page tool listed and called in headed Linux Chromium"
+                )
                 samples = []
                 for _ in range(20):
                     started = time.monotonic()
@@ -177,6 +187,39 @@ async def main(image):
                     -10:
                 ]
                 report["checks"].append("external stereo 24 kHz PCM reaches browser microphone")
+
+                # The TypeScript client drives the same media routes as the Python SDK.
+                await native.page.evaluate("window.probes=[]")
+                node = await asyncio.create_subprocess_exec(
+                    "node",
+                    str(repo / "harness-client/tests/media-roundtrip.mjs"),
+                    env={
+                        **os.environ,
+                        "MBA_URL": worker["url"],
+                        "MBA_TOKEN": token,
+                        "SESSION_ID": session.id,
+                    },
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                async with asyncio.timeout(60):
+                    assert (await node.stdout.readline()).strip() == b"INJECTED"
+                    probes = await native.page.evaluate("window.probes")
+                    assert any(p["rms"] > 0.02 and abs(p["hz"] - 880) < 40 for p in probes), probes[
+                        -10:
+                    ]
+                    assert (await node.stdout.readline()).strip() == b"CAPTURING"
+                    await native.page.locator("#tone").click()
+                    stdout, stderr = await node.communicate()
+                assert node.returncode == 0, stderr.decode()
+                typescript = json.loads(stdout.decode().splitlines()[-1])
+                frame = typescript["frame"]
+                assert typescript["speaker_peak"] > 1000, typescript
+                assert frame["bytes"] == frame["width"] * frame["height"] * 3, typescript
+                report["typescript_client"] = typescript
+                report["checks"].append(
+                    "TypeScript client: 16 kHz microphone input, speaker capture and RGB frames"
+                )
 
                 async with session.audio.open_input() as stream:
                     for index in range(20):
