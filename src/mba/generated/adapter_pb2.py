@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\radapter.proto\x12\x06mba.v1\"\x07\n\x05\x45mpty\"!\n\x05Hello\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\"\xb0\x01\n\x05Ready\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\x0e\n\x06now_us\x18\x02 \x01(\x04\x12\x33\n\x0b\x65nvironment\x18\x03 \x03(\x0b\x32\x1e.mba.v1.Ready.EnvironmentEntry\x12\x14\n\x0c\x63\x61pabilities\x18\x04 \x03(\t\x1a\x32\n\x10\x45nvironmentEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xcf\x02\n\x0c\x42rowserStart\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\x10\n\x08headless\x18\x02 \x01(\x08\x12\x12\n\ntarget_url\x18\x03 \x01(\t\x12\x14\n\x0c\x62inding_json\x18\x04 \x01(\t\x12\x1a\n\x12storage_state_json\x18\x05 \x01(\t\x12\x1a\n\x12permission_origins\x18\x06 \x03(\t\x12\x17\n\x0fobserver_script\x18\x07 \x01(\t\x12\x15\n\rartifact_root\x18\x08 \x01(\t\x12\x14\n\x0charness_html\x18\t \x01(\t\x12\r\n\x05\x61udio\x18\n \x01(\x08\x12\x0e\n\x06\x63\x61mera\x18\x0b \x01(\x08\x12\x11\n\tcalibrate\x18\x0c \x01(\x08\x12\x17\n\x0f\x62rowser_control\x18\r \x01(\t\x12 \n\x18native_attach_timeout_ms\x18\x0e \x01(\r\"\x86\x01\n\x0e\x42rowserCommand\x12\x11\n\toperation\x18\x01 \x01(\t\x12\x10\n\x08selector\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\t\x12\x12\n\ntimeout_ms\x18\x04 \x01(\r\x12\x16\n\x0e\x66rame_selector\x18\x05 \x01(\t\x12\x14\n\x0coptions_json\x18\x06 \x01(\t\"+\n\rBrowserResult\x12\x0c\n\x04json\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"S\n\x0bObservation\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x16\n\x0eobserved_at_us\x18\x02 \x01(\x04\x12\x0c\n\x04json\x18\x03 \x01(\t\x12\x10\n\x08sequence\x18\x04 \x01(\x04\"\x8d\x01\n\nMediaStart\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\r\n\x05\x61udio\x18\x02 \x01(\x08\x12\x0e\n\x06\x63\x61mera\x18\x03 \x01(\x08\x12\x0e\n\x06visual\x18\x04 \x01(\x08\x12\x15\n\rcamera_device\x18\x05 \x01(\t\x12\x0c\n\x04root\x18\x06 \x01(\t\x12\x11\n\trecording\x18\x07 \x01(\x08\"y\n\x0bMediaFormat\x12\x0c\n\x04kind\x18\x01 \x01(\t\x12\x10\n\x08\x65ncoding\x18\x02 \x01(\t\x12\x0c\n\x04rate\x18\x03 \x01(\r\x12\x10\n\x08\x63hannels\x18\x04 \x01(\r\x12\r\n\x05width\x18\x05 \x01(\r\x12\x0e\n\x06height\x18\x06 \x01(\r\x12\x0b\n\x03\x66ps\x18\x07 \x01(\r\"\x80\x01\n\x05Track\x12\x11\n\taction_id\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0c\n\x04path\x18\x03 \x01(\t\x12\x11\n\tstream_id\x18\x04 \x01(\t\x12#\n\x06\x66ormat\x18\x05 \x01(\x0b\x32\x13.mba.v1.MediaFormat\x12\x10\n\x08start_us\x18\x06 \x01(\x04\"\x1e\n\tActionRef\x12\x11\n\taction_id\x18\x01 \x01(\t\"\x99\x01\n\x0bMediaPacket\x12\x11\n\tstream_id\x18\x01 \x01(\t\x12\x10\n\x08sequence\x18\x02 \x01(\x04\x12\x0e\n\x06pts_us\x18\x03 \x01(\x04\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\x0c\x12#\n\x06\x66ormat\x18\x05 \x01(\x0b\x32\x13.mba.v1.MediaFormat\x12\x15\n\rdiscontinuity\x18\x06 \x01(\x08\x12\x0b\n\x03\x65nd\x18\x07 \x01(\x08\"=\n\x0e\x43\x61ptureRequest\x12\x0c\n\x04kind\x18\x01 \x01(\t\x12\x10\n\x08\x63hannels\x18\x02 \x01(\r\x12\x0b\n\x03\x66ps\x18\x03 \x01(\r\"#\n\x10RecordingRequest\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x32\xf0\x01\n\x07\x42rowser\x12,\n\x05Start\x12\x14.mba.v1.BrowserStart\x1a\r.mba.v1.Ready\x12\x38\n\x07\x43ommand\x12\x16.mba.v1.BrowserCommand\x1a\x15.mba.v1.BrowserResult\x12/\n\x07Observe\x12\r.mba.v1.Empty\x1a\x13.mba.v1.Observation0\x01\x12&\n\x06Health\x12\r.mba.v1.Empty\x1a\r.mba.v1.Ready\x12$\n\x04Stop\x12\r.mba.v1.Empty\x1a\r.mba.v1.Empty2\xf6\x03\n\x05Media\x12*\n\x05Start\x12\x12.mba.v1.MediaStart\x1a\r.mba.v1.Ready\x12&\n\x06Health\x12\r.mba.v1.Empty\x1a\r.mba.v1.Ready\x12\'\n\x07Prepare\x12\r.mba.v1.Track\x1a\r.mba.v1.Empty\x12$\n\x04Play\x12\r.mba.v1.Track\x1a\r.mba.v1.Empty\x12*\n\x06\x43\x61ncel\x12\x11.mba.v1.ActionRef\x1a\r.mba.v1.Empty\x12+\n\x07Release\x12\x11.mba.v1.ActionRef\x1a\r.mba.v1.Empty\x12-\n\x05Input\x12\x13.mba.v1.MediaPacket\x1a\r.mba.v1.Empty(\x01\x12\x38\n\x07\x43\x61pture\x12\x16.mba.v1.CaptureRequest\x1a\x13.mba.v1.MediaPacket0\x01\x12/\n\x07Observe\x12\r.mba.v1.Empty\x1a\x13.mba.v1.Observation0\x01\x12\x31\n\x06Record\x12\x18.mba.v1.RecordingRequest\x1a\r.mba.v1.Empty\x12$\n\x04Stop\x12\r.mba.v1.Empty\x1a\r.mba.v1.Emptyb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\radapter.proto\x12\x06mba.v1\"\x07\n\x05\x45mpty\"!\n\x05Hello\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\"\xb0\x01\n\x05Ready\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\x0e\n\x06now_us\x18\x02 \x01(\x04\x12\x33\n\x0b\x65nvironment\x18\x03 \x03(\x0b\x32\x1e.mba.v1.Ready.EnvironmentEntry\x12\x14\n\x0c\x63\x61pabilities\x18\x04 \x03(\t\x1a\x32\n\x10\x45nvironmentEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xdf\x02\n\x0c\x42rowserStart\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\x10\n\x08headless\x18\x02 \x01(\x08\x12\x12\n\ntarget_url\x18\x03 \x01(\t\x12\x14\n\x0c\x62inding_json\x18\x04 \x01(\t\x12\x1a\n\x12storage_state_json\x18\x05 \x01(\t\x12\x1a\n\x12permission_origins\x18\x06 \x03(\t\x12\x17\n\x0fobserver_script\x18\x07 \x01(\t\x12\x15\n\rartifact_root\x18\x08 \x01(\t\x12\x14\n\x0charness_html\x18\t \x01(\t\x12\r\n\x05\x61udio\x18\n \x01(\x08\x12\x0e\n\x06\x63\x61mera\x18\x0b \x01(\x08\x12\x11\n\tcalibrate\x18\x0c \x01(\x08\x12\x17\n\x0f\x62rowser_control\x18\r \x01(\t\x12 \n\x18native_attach_timeout_ms\x18\x0e \x01(\r\x12\x0e\n\x06webmcp\x18\x0f \x01(\x08\"\x86\x01\n\x0e\x42rowserCommand\x12\x11\n\toperation\x18\x01 \x01(\t\x12\x10\n\x08selector\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\t\x12\x12\n\ntimeout_ms\x18\x04 \x01(\r\x12\x16\n\x0e\x66rame_selector\x18\x05 \x01(\t\x12\x14\n\x0coptions_json\x18\x06 \x01(\t\"+\n\rBrowserResult\x12\x0c\n\x04json\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"S\n\x0bObservation\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x16\n\x0eobserved_at_us\x18\x02 \x01(\x04\x12\x0c\n\x04json\x18\x03 \x01(\t\x12\x10\n\x08sequence\x18\x04 \x01(\x04\"\x8d\x01\n\nMediaStart\x12\x18\n\x10protocol_version\x18\x01 \x01(\r\x12\r\n\x05\x61udio\x18\x02 \x01(\x08\x12\x0e\n\x06\x63\x61mera\x18\x03 \x01(\x08\x12\x0e\n\x06visual\x18\x04 \x01(\x08\x12\x15\n\rcamera_device\x18\x05 \x01(\t\x12\x0c\n\x04root\x18\x06 \x01(\t\x12\x11\n\trecording\x18\x07 \x01(\x08\"y\n\x0bMediaFormat\x12\x0c\n\x04kind\x18\x01 \x01(\t\x12\x10\n\x08\x65ncoding\x18\x02 \x01(\t\x12\x0c\n\x04rate\x18\x03 \x01(\r\x12\x10\n\x08\x63hannels\x18\x04 \x01(\r\x12\r\n\x05width\x18\x05 \x01(\r\x12\x0e\n\x06height\x18\x06 \x01(\r\x12\x0b\n\x03\x66ps\x18\x07 \x01(\r\"\x80\x01\n\x05Track\x12\x11\n\taction_id\x18\x01 \x01(\t\x12\x0c\n\x04kind\x18\x02 \x01(\t\x12\x0c\n\x04path\x18\x03 \x01(\t\x12\x11\n\tstream_id\x18\x04 \x01(\t\x12#\n\x06\x66ormat\x18\x05 \x01(\x0b\x32\x13.mba.v1.MediaFormat\x12\x10\n\x08start_us\x18\x06 \x01(\x04\"\x1e\n\tActionRef\x12\x11\n\taction_id\x18\x01 \x01(\t\"\x99\x01\n\x0bMediaPacket\x12\x11\n\tstream_id\x18\x01 \x01(\t\x12\x10\n\x08sequence\x18\x02 \x01(\x04\x12\x0e\n\x06pts_us\x18\x03 \x01(\x04\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\x0c\x12#\n\x06\x66ormat\x18\x05 \x01(\x0b\x32\x13.mba.v1.MediaFormat\x12\x15\n\rdiscontinuity\x18\x06 \x01(\x08\x12\x0b\n\x03\x65nd\x18\x07 \x01(\x08\"=\n\x0e\x43\x61ptureRequest\x12\x0c\n\x04kind\x18\x01 \x01(\t\x12\x10\n\x08\x63hannels\x18\x02 \x01(\r\x12\x0b\n\x03\x66ps\x18\x03 \x01(\r\"#\n\x10RecordingRequest\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x32\xf0\x01\n\x07\x42rowser\x12,\n\x05Start\x12\x14.mba.v1.BrowserStart\x1a\r.mba.v1.Ready\x12\x38\n\x07\x43ommand\x12\x16.mba.v1.BrowserCommand\x1a\x15.mba.v1.BrowserResult\x12/\n\x07Observe\x12\r.mba.v1.Empty\x1a\x13.mba.v1.Observation0\x01\x12&\n\x06Health\x12\r.mba.v1.Empty\x1a\r.mba.v1.Ready\x12$\n\x04Stop\x12\r.mba.v1.Empty\x1a\r.mba.v1.Empty2\xf6\x03\n\x05Media\x12*\n\x05Start\x12\x12.mba.v1.MediaStart\x1a\r.mba.v1.Ready\x12&\n\x06Health\x12\r.mba.v1.Empty\x1a\r.mba.v1.Ready\x12\'\n\x07Prepare\x12\r.mba.v1.Track\x1a\r.mba.v1.Empty\x12$\n\x04Play\x12\r.mba.v1.Track\x1a\r.mba.v1.Empty\x12*\n\x06\x43\x61ncel\x12\x11.mba.v1.ActionRef\x1a\r.mba.v1.Empty\x12+\n\x07Release\x12\x11.mba.v1.ActionRef\x1a\r.mba.v1.Empty\x12-\n\x05Input\x12\x13.mba.v1.MediaPacket\x1a\r.mba.v1.Empty(\x01\x12\x38\n\x07\x43\x61pture\x12\x16.mba.v1.CaptureRequest\x1a\x13.mba.v1.MediaPacket0\x01\x12/\n\x07Observe\x12\r.mba.v1.Empty\x1a\x13.mba.v1.Observation0\x01\x12\x31\n\x06Record\x12\x18.mba.v1.RecordingRequest\x1a\r.mba.v1.Empty\x12$\n\x04Stop\x12\r.mba.v1.Empty\x1a\r.mba.v1.Emptyb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -42,29 +42,29 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_READY_ENVIRONMENTENTRY']._serialized_start=196
   _globals['_READY_ENVIRONMENTENTRY']._serialized_end=246
   _globals['_BROWSERSTART']._serialized_start=249
-  _globals['_BROWSERSTART']._serialized_end=584
-  _globals['_BROWSERCOMMAND']._serialized_start=587
-  _globals['_BROWSERCOMMAND']._serialized_end=721
-  _globals['_BROWSERRESULT']._serialized_start=723
-  _globals['_BROWSERRESULT']._serialized_end=766
-  _globals['_OBSERVATION']._serialized_start=768
-  _globals['_OBSERVATION']._serialized_end=851
-  _globals['_MEDIASTART']._serialized_start=854
-  _globals['_MEDIASTART']._serialized_end=995
-  _globals['_MEDIAFORMAT']._serialized_start=997
-  _globals['_MEDIAFORMAT']._serialized_end=1118
-  _globals['_TRACK']._serialized_start=1121
-  _globals['_TRACK']._serialized_end=1249
-  _globals['_ACTIONREF']._serialized_start=1251
-  _globals['_ACTIONREF']._serialized_end=1281
-  _globals['_MEDIAPACKET']._serialized_start=1284
-  _globals['_MEDIAPACKET']._serialized_end=1437
-  _globals['_CAPTUREREQUEST']._serialized_start=1439
-  _globals['_CAPTUREREQUEST']._serialized_end=1500
-  _globals['_RECORDINGREQUEST']._serialized_start=1502
-  _globals['_RECORDINGREQUEST']._serialized_end=1537
-  _globals['_BROWSER']._serialized_start=1540
-  _globals['_BROWSER']._serialized_end=1780
-  _globals['_MEDIA']._serialized_start=1783
-  _globals['_MEDIA']._serialized_end=2285
+  _globals['_BROWSERSTART']._serialized_end=600
+  _globals['_BROWSERCOMMAND']._serialized_start=603
+  _globals['_BROWSERCOMMAND']._serialized_end=737
+  _globals['_BROWSERRESULT']._serialized_start=739
+  _globals['_BROWSERRESULT']._serialized_end=782
+  _globals['_OBSERVATION']._serialized_start=784
+  _globals['_OBSERVATION']._serialized_end=867
+  _globals['_MEDIASTART']._serialized_start=870
+  _globals['_MEDIASTART']._serialized_end=1011
+  _globals['_MEDIAFORMAT']._serialized_start=1013
+  _globals['_MEDIAFORMAT']._serialized_end=1134
+  _globals['_TRACK']._serialized_start=1137
+  _globals['_TRACK']._serialized_end=1265
+  _globals['_ACTIONREF']._serialized_start=1267
+  _globals['_ACTIONREF']._serialized_end=1297
+  _globals['_MEDIAPACKET']._serialized_start=1300
+  _globals['_MEDIAPACKET']._serialized_end=1453
+  _globals['_CAPTUREREQUEST']._serialized_start=1455
+  _globals['_CAPTUREREQUEST']._serialized_end=1516
+  _globals['_RECORDINGREQUEST']._serialized_start=1518
+  _globals['_RECORDINGREQUEST']._serialized_end=1553
+  _globals['_BROWSER']._serialized_start=1556
+  _globals['_BROWSER']._serialized_end=1796
+  _globals['_MEDIA']._serialized_start=1799
+  _globals['_MEDIA']._serialized_end=2301
 # @@protoc_insertion_point(module_scope)

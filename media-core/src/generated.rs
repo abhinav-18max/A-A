@@ -50,6 +50,8 @@ pub struct BrowserStart {
     pub browser_control: ::prost::alloc::string::String,
     #[prost(uint32, tag = "14")]
     pub native_attach_timeout_ms: u32,
+    #[prost(bool, tag = "15")]
+    pub webmcp: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BrowserCommand {

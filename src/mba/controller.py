@@ -242,11 +242,10 @@ class Controller:
                     except httpx.HTTPError:
                         pass
                     await asyncio.sleep(0.1)
-            body = config.model_dump(mode="json")
-            if config.storage_state is not None:
-                body["storage_state"] = config.storage_state
             response = await self.http.post(
-                launched["url"] + "/v1/sessions", headers=self.headers(sid), json=body
+                launched["url"] + "/v1/sessions",
+                headers=self.headers(sid),
+                json=config.request_body(),
             )
             if response.is_error:
                 raise AdapterError("startup_failed", response.text, 503)

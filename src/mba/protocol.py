@@ -35,6 +35,10 @@ class BindingConfig(Model):
 class SessionConfig(Model):
     browser_control: Literal["tools", "native"] = "tools"
     native_attach_timeout_s: float = Field(default=120, gt=0, le=3600)
+    webmcp: bool = Field(
+        default=False,
+        description="Enable Chromium's WebMCP API so pages can register tools for the session.",
+    )
     mode: Literal["text", "audio", "video", "multimodal"] = "multimodal"
     camera: bool | None = None
     visual: bool | None = None
@@ -50,6 +54,16 @@ class SessionConfig(Model):
     max_duration_s: float = Field(default=1800, gt=0, le=86400)
     capture_tail_s: float = Field(default=2, ge=0, le=10)
     min_free_disk_mb: int = Field(default=1024, ge=1)
+
+    def request_body(self):
+        """JSON for the HTTP API. WebMCP is sent only when enabled, so plain sessions still start
+        on workers that predate it."""
+        body = self.model_dump(mode="json")
+        if not self.webmcp:
+            body.pop("webmcp")
+        if self.storage_state is not None:
+            body["storage_state"] = self.storage_state
+        return body
 
     @property
     def camera_enabled(self):
@@ -242,6 +256,9 @@ class BrowserOperation(Model):
         "downloads",
         "dialog",
         "bind_text",
+        "webmcp_tools",
+        "webmcp_call",
+        "webmcp_adapter",
     ]
     selector: str = ""
     value: str = ""
@@ -257,9 +274,76 @@ class BrowserOperation(Model):
             "{kind:text,text,exact}, or {kind:test_id,value}; drag uses destination (CSS) or "
             "destination_target; click_at/scroll use x,y; select uses values; wait uses state "
             "(visible,hidden,attached,detached); dialog uses accept,prompt; bind_text uses binding. "
-            "For upload, value is an asset ID returned by upload, not a worker filesystem path."
+            "For upload, value is an asset ID returned by upload, not a worker filesystem path. "
+            "webmcp_call takes the tool name as value and uses arguments (object), optional "
+            "source (site or tester) and frame_id; webmcp_adapter uses adapter (a SiteAdapter) "
+            "or remove (an adapter name)."
         ),
     )
+
+
+STEP_OPERATION = Literal[
+    "open",
+    "click",
+    "fill",
+    "press",
+    "wait",
+    "screenshot",
+    "snapshot",
+    "pages",
+    "back",
+    "forward",
+    "reload",
+    "double_click",
+    "hover",
+    "drag",
+    "click_at",
+    "type",
+    "select",
+    "check",
+    "uncheck",
+    "scroll",
+    "scroll_into_view",
+    "upload",
+    "downloads",
+    "dialog",
+]
+TOOL_NAME = r"^[A-Za-z0-9_.-]{1,64}$"
+
+
+class AdapterStep(Model):
+    """One browser operation. String fields may use {{argument}} placeholders."""
+
+    operation: STEP_OPERATION
+    selector: str = ""
+    value: str = ""
+    timeout_ms: int | None = Field(default=None, gt=0, le=120000)
+    frame_selector: str = ""
+    options: dict = Field(default_factory=dict)
+
+
+class AdapterTool(Model):
+    name: str = Field(pattern=TOOL_NAME)
+    description: str = Field(default="", max_length=2000)
+    input_schema: dict = Field(default_factory=lambda: {"type": "object", "properties": {}})
+    steps: list[AdapterStep] = Field(min_length=1, max_length=50)
+    read_only: bool = False
+
+
+class SiteAdapter(Model):
+    """Tester-defined tools for a site without WebMCP, run with real Playwright input."""
+
+    name: str = Field(pattern=TOOL_NAME)
+    description: str = ""
+    url_pattern: str = Field(default="", description="Glob such as https://example.com/*")
+    tools: list[AdapterTool] = Field(min_length=1, max_length=64)
+
+    @model_validator(mode="after")
+    def unique_tools(self):
+        names = [t.name for t in self.tools]
+        if len(names) != len(set(names)):
+            raise ValueError("tool names must be unique within an adapter")
+        return self
 
 
 class RecordingOperation(Model):

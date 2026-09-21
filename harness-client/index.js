@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { chromium } from 'playwright';
+import * as media from './media.js';
+export { audioFormat, videoFormat, decodeMediaPacket, ActionHandle, Input } from './media.js';
 const version = createRequire(import.meta.url)('playwright/package.json').version;
 const clock = () => Number(process.hrtime.bigint() / 1000n);
 export class Client {
@@ -9,17 +11,45 @@ export class Client {
         const response = await fetch(this.url + path, { method, headers: { Authorization: 'Bearer ' + this.token, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
         const data = await response.json();
         if (!response.ok)
-            throw Object.assign(new Error(data.message || response.statusText), { code: data.error });
+            throw media.adapterError(data.error, data.message || response.statusText);
         return data;
     }
     async start(config = {}) { const result = await this.request('/v1/sessions', 'POST', { mode: 'text', binding: { kind: 'manual' }, recording: true, ...config }); return this.session(result.session_id); }
     session(id) { return new Session(this, id); }
 }
 export class Session {
-    constructor(client, id) { this.client = client; this.id = id; this.path = '/v1/sessions/' + id; }
-    capabilities() { return this.client.request(this.path + '/capabilities'); }
-    stop() { return this.client.request(this.path + '/stop', 'POST'); }
-    command(operation, options = {}) { return this.client.request(this.path + '/browser', 'POST', { operation, ...options }); }
+    constructor(client, id) {
+        this.client = client;
+        this.id = id;
+        this.path = '/v1/sessions/' + id;
+        this.audio = new Media(this, 'audio');
+        this.camera = new Media(this, 'video');
+        this.visual = { screenshot: destination => this.screenshot(destination), frames: ({ fps = 1 } = {}) => media.capture(this, 'video', { fps }) };
+        this.recording = { start: () => this.request('/recording', 'POST', { enabled: true }), stop: async () => { await this.request('/recording', 'POST', { enabled: false }); return (await this.inspect()).artifacts; } };
+        this.webmcp = {
+            tools: ({ pageId = '' } = {}) => this.command('webmcp_tools', { page_id: pageId }),
+            call: (name, args = {}, { source = '', frameId = '', pageId = '', timeoutMs = 30000 } = {}) => this.command('webmcp_call', { value: name, frame_id: frameId, page_id: pageId, timeout_ms: timeoutMs, options: { arguments: args, source } }),
+            addAdapter: adapter => this.command('webmcp_adapter', { options: { adapter } }),
+            removeAdapter: name => this.command('webmcp_adapter', { options: { remove: name } }),
+        };
+    }
+    request(path, method, body) { return this.client.request(this.path + path, method, body); }
+    capabilities() { return this.request('/capabilities'); }
+    inspect() { return this.request(''); }
+    stop() { return this.request('/stop', 'POST'); }
+    command(operation, options = {}) { return this.request('/browser', 'POST', { operation, ...options }); }
+    async submit(action) { return new media.ActionHandle(this, (await this.request('/actions', 'POST', action)).action_id); }
+    cancel(actionId) { return this.request(`/actions/${actionId}/cancel`, 'POST'); }
+    upload(path) { return media.upload(this, path); }
+    download(artifactPath, destination) { return media.download(this, artifactPath, destination); }
+    async sendText(content, options = {}) { return this.submit({ tracks: [{ kind: 'text', content }], ...options }); }
+    async sendAudio(path, options = {}) { return this.submit({ tracks: [{ kind: 'audio', source: { kind: 'asset', asset_id: await this.upload(path) } }], ...options }); }
+    async sendVideo(path, options = {}) { return this.submit({ tracks: [{ kind: 'video', source: { kind: 'asset', asset_id: await this.upload(path) } }], ...options }); }
+    stopMedia(kind) { return this.request('/media/stop', 'POST', { kind }); }
+    checkpoint() { return this.request('/checkpoint', 'POST'); }
+    async screenshot(destination) { const { path } = await this.checkpoint(); return destination ? this.download(path, destination) : path; }
+    events(after = 0) { return media.events(this, after); }
+    eventPage(after = 0) { return this.request('/events?after=' + after); }
     async connectNative() { const connection = new NativeConnection(this); try {
         await connection.start();
         return connection;
@@ -28,6 +58,20 @@ export class Session {
         await connection.close();
         throw error;
     } }
+}
+export class Media {
+    constructor(session, kind) { this.session = session; this.kind = kind; }
+    play(path, options) { return this.kind === 'audio' ? this.session.sendAudio(path, options) : this.session.sendVideo(path, options); }
+    openInput(format) {
+        const config = this.kind === 'audio' ? media.audioFormat(format) : media.videoFormat(format);
+        return new media.Input(this.session, config).open();
+    }
+    capture({ channels = 2 } = {}) {
+        if (this.kind !== 'audio')
+            throw media.adapterError('unsupported_operation', 'Use visual.frames()');
+        return media.capture(this.session, 'audio', { channels });
+    }
+    stop() { return this.session.stopMedia(this.kind); }
 }
 export class NativeConnection {
     constructor(session) { this.session = session; this.pages = new Map(); this.bindings = new Map(); this.bindingVersions = new WeakMap(); this.pending = []; this.frameIds = new WeakMap(); this.stopping = false; this.error = null; }
@@ -91,6 +135,53 @@ export class NativeConnection {
         this.bindings.set(page, { binding: value, script });
         await page.addInitScript({ content: script });
         await this.read(page, value, script);
+    }
+    frameId(frame) { if (!this.frameIds.has(frame))
+        this.frameIds.set(frame, randomUUID()); return this.frameIds.get(frame); }
+    async webmcpTools(page = this.selected) {
+        if (!this.descriptor.webmcp)
+            throw media.adapterError('webmcp_disabled', 'Start the session with webmcp enabled');
+        this.registerPage(page);
+        const tools = [], blocked = [];
+        for (const frame of page.frames()) {
+            const where = { page_id: this.pages.get(page), frame_id: this.frameId(frame), frame_url: frame.url() };
+            let listing;
+            try {
+                listing = await Promise.race([frame.evaluate(`(${this.descriptor.webmcp_list_script})()`), new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))]);
+            }
+            catch (error) {
+                if (/permissions policy|NotAllowedError/.test(String(error)))
+                    blocked.push({ ...where, reason: 'permissions_policy' });
+                continue;
+            }
+            for (const tool of listing.tools)
+                tools.push({ ...tool, ...where, tool_source: 'site' });
+        }
+        return { page_id: this.pages.get(page), tools, blocked_frames: blocked };
+    }
+    async webmcpCall(page, name, args = {}, { frame, timeoutMs = 30000 } = {}) {
+        if (!frame) {
+            const frames = new Set((await this.webmcpTools(page)).tools.filter(t => t.name === name).map(t => t.frame_id));
+            if (frames.size > 1)
+                throw media.adapterError('webmcp_ambiguous_tool', `Tool ${name} is in several frames`);
+            frame = page.frames().find(f => frames.has(this.frameId(f))) || page.mainFrame();
+        }
+        const where = { page_id: this.pages.get(page), frame_id: this.frameId(frame), tool: name };
+        this.enqueue('webmcp.invoked', { ...where, initiator: 'adapter', tool_source: 'site' });
+        let timer;
+        const result = await Promise.race([
+            frame.evaluate(`(${this.descriptor.webmcp_call_script})(${JSON.stringify({ name, inputJson: JSON.stringify(args) })})`),
+            new Promise((_, reject) => { timer = setTimeout(() => reject(media.adapterError('webmcp_timeout', `Tool ${name} did not respond`)), timeoutMs); }),
+        ]).finally(() => clearTimeout(timer));
+        if (result.status === 'unavailable' || result.status === 'not_found')
+            throw media.adapterError('webmcp_tool_not_found', `No WebMCP tool named ${name}`);
+        this.enqueue('webmcp.responded', { ...where, status: result.status });
+        let parsed = result.output ?? null;
+        try {
+            parsed = result.output === undefined ? null : JSON.parse(result.output);
+        }
+        catch { }
+        return { ...where, status: result.status, result: parsed, error: result.error, untrusted: true, tool_source: 'site' };
     }
     async read(page, binding, script) {
         const root = binding.frame_selector ? page.frameLocator(binding.frame_selector) : page;

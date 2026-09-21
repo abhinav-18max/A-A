@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { nativeGateway } from './native-gateway.js';
+import * as webmcp from './webmcp.js';
 import { BrowserService, type BrowserServer, type Observation, type BrowserStart, type BrowserCommand } from './generated/adapter.js';
 const version: string = createRequire(process.argv[1])('playwright/package.json').version;
 const epoch = process.hrtime.bigint();
@@ -17,6 +18,7 @@ let nativeConnected = false, nativeReady = false;
 let sequence = 0, mutationTail: Promise<unknown> = Promise.resolve();
 const pages = new Map<string, Page>(), pageIds = new WeakMap<Page, string>(), frameIds = new WeakMap<Frame, string>(), documents = new WeakMap<Frame, string>();
 const downloads: Record<string, string>[] = [];
+const adapters = new Map<string, webmcp.SiteAdapter>(), webmcpCalls: webmcp.Pending = [];
 const dialogPolicies = new WeakMap<Page, {
     accept: boolean;
     prompt?: string;
@@ -78,6 +80,8 @@ function track(p: Page) {
         }
     });
     emit('browser.page_created', { page_id: id });
+    if (config.webmcp)
+        void webmcp.observe(p, id, emit, webmcpCalls);
 }
 function surface(p: Page, frame?: string) { return frame ? p.frameLocator(frame) : p; }
 async function observe() {
@@ -114,8 +118,8 @@ async function observe() {
         busy = false;
     }
 }
-const operations = ['open', 'click', 'fill', 'press', 'wait', 'screenshot', 'text', 'snapshot', 'pages', 'new_page', 'select_page', 'close_page', 'back', 'forward', 'reload', 'double_click', 'hover', 'drag', 'click_at', 'type', 'select', 'check', 'uncheck', 'scroll', 'scroll_into_view', 'upload', 'downloads', 'dialog', 'bind_text'];
-function capabilities() { return { browser_control: config.browserControl || 'tools', playwright_version: version, operations: config.browserControl === 'native' ? [] : operations, native_connected: nativeConnected, target_ready: config.browserControl === 'native' ? nativeReady : !!page }; }
+const operations = ['open', 'click', 'fill', 'press', 'wait', 'screenshot', 'text', 'snapshot', 'pages', 'new_page', 'select_page', 'close_page', 'back', 'forward', 'reload', 'double_click', 'hover', 'drag', 'click_at', 'type', 'select', 'check', 'uncheck', 'scroll', 'scroll_into_view', 'upload', 'downloads', 'dialog', 'bind_text', 'webmcp_tools', 'webmcp_call', 'webmcp_adapter'];
+function capabilities() { return { browser_control: config.browserControl || 'tools', playwright_version: version, operations: config.browserControl === 'native' ? [] : operations, native_connected: nativeConnected, target_ready: config.browserControl === 'native' ? nativeReady : !!page, webmcp: { enabled: !!config.webmcp, api: 'document.modelContext', adapters: [...adapters.keys()] } }; }
 function locatorFor(root: Page | Frame | ReturnType<Page['frameLocator']>, selector: string, options: any): Locator | undefined {
     const target = options.target;
     if (target) {
@@ -138,7 +142,7 @@ async function command(req: BrowserCommand) {
     if (req.operation === 'native_descriptor') {
         if (!gateway)
             fail('native_disabled');
-        return { endpoint: gateway.endpoint, headers: gateway.headers, playwright_version: version, now_us: now(), target_url: config.targetUrl, binding, observer_script: config.observerScript, context_options: { viewport: { width: 1280, height: 720 }, storage_state: config.storageStateJson ? JSON.parse(config.storageStateJson) : undefined }, permission_origins: config.permissionOrigins, permissions: [...(config.audio ? ['microphone'] : []), ...(config.camera ? ['camera'] : [])] };
+        return { endpoint: gateway.endpoint, headers: gateway.headers, playwright_version: version, now_us: now(), target_url: config.targetUrl, binding, observer_script: config.observerScript, webmcp: !!config.webmcp, webmcp_list_script: webmcp.listSource, webmcp_call_script: webmcp.callSource, context_options: { viewport: { width: 1280, height: 720 }, storage_state: config.storageStateJson ? JSON.parse(config.storageStateJson) : undefined }, permission_origins: config.permissionOrigins, permissions: [...(config.audio ? ['microphone'] : []), ...(config.camera ? ['camera'] : [])] };
     }
     if (req.operation === 'native_observe') {
         if (config.browserControl !== 'native' || !nativeConnected || fault)
@@ -146,7 +150,7 @@ async function command(req: BrowserCommand) {
         const rows = options.rows;
         if (!Array.isArray(rows) || rows.length > 256)
             fail('invalid_observations');
-        const allowed = ['text.revision', 'text.removed', 'browser.page_created', 'browser.page_closed', 'browser.navigation', 'browser.selected', 'browser.page_error', 'capture.gap', 'target.ready'];
+        const allowed = ['text.revision', 'text.removed', 'browser.page_created', 'browser.page_closed', 'browser.navigation', 'browser.selected', 'browser.page_error', 'capture.gap', 'target.ready', 'webmcp.tools_changed', 'webmcp.invoked', 'webmcp.responded'];
         for (const row of rows) {
             if (!allowed.includes(row.type) || !row.data || typeof row.data !== 'object' || !Number.isFinite(row.observed_at_us) || row.observed_at_us < 0)
                 fail('invalid_observations');
@@ -311,6 +315,41 @@ async function command(req: BrowserCommand) {
             if (binding.leave_selector)
                 await root.locator(binding.leave_selector).click({ timeout: 2000 });
             break;
+        case 'webmcp_adapter': {
+            if (options.remove) {
+                adapters.delete(String(options.remove));
+                return { adapters: [...adapters.keys()] };
+            }
+            const adapter = webmcp.validateAdapter(options.adapter, fail);
+            adapters.set(adapter.name, adapter);
+            return { adapter: adapter.name, tools: adapter.tools.map(t => t.name), adapters: [...adapters.keys()] };
+        }
+        case 'webmcp_tools': {
+            const where = { page_id: pageIds.get(p), frame_id: frameId(p.mainFrame()), document_id: documentId(p.mainFrame()), frame_url: p.url() };
+            const tester = webmcp.testerTools(adapters, p.url(), where);
+            if (!config.webmcp) {
+                if (!tester.length)
+                    fail('webmcp_disabled', 'Start the session with webmcp enabled or register a site adapter');
+                return { page_id: where.page_id, document_id: where.document_id, site_enabled: false, available: false, tools: tester, blocked_frames: [] };
+            }
+            const listing = await webmcp.listTools(p, webmcpIds);
+            return { ...listing, site_enabled: true, tools: [...listing.tools, ...tester] };
+        }
+        case 'webmcp_call': {
+            const source = options.source || '';
+            const found = source === 'site' ? undefined : webmcp.findTester(adapters, req.value, p.url());
+            if (found) {
+                const where = { page_id: pageIds.get(p) };
+                // Steps call command() directly: this call already holds the mutation queue.
+                const run = (step: webmcp.Step) => command({ operation: step.operation, selector: step.selector || '', value: step.value || '', timeoutMs: step.timeout_ms || timeout, frameSelector: step.frame_selector || '', optionsJson: JSON.stringify({ page_id: pageIds.get(p), ...(step.options || {}) }) });
+                return webmcp.callTester(found.adapter, found.tool, options.arguments, run, emit, where, fail);
+            }
+            if (source === 'tester')
+                fail('webmcp_tool_not_found', `No site adapter tool named ${req.value} for this page`);
+            if (!config.webmcp)
+                fail('webmcp_disabled', 'Start the session with webmcp enabled to call page tools');
+            return webmcp.callTool(p, selectedFrame, req.value, options.arguments, req.timeoutMs || 30000, webmcpIds, fail, webmcpCalls);
+        }
         case 'calibration': {
             if (binding.kind !== 'harness')
                 fail('not_calibration');
@@ -329,7 +368,8 @@ async function command(req: BrowserCommand) {
     }
     return {};
 }
-const readOperations = new Set(['capabilities', 'native_descriptor', 'native_observe', 'snapshot', 'pages', 'screenshot', 'wait', 'downloads']);
+const readOperations = new Set(['capabilities', 'native_descriptor', 'native_observe', 'snapshot', 'pages', 'screenshot', 'wait', 'downloads', 'webmcp_tools']);
+const webmcpIds = { page: (p: Page) => pageIds.get(p), frame: frameId, document: documentId };
 function dispatch(req: BrowserCommand) {
     if (readOperations.has(req.operation))
         return command(req);
@@ -384,7 +424,7 @@ const service: BrowserServer = {
             fail('already_started');
         config = req;
         binding = req.bindingJson ? JSON.parse(req.bindingJson) : {};
-        const launch = { headless: req.headless, chromiumSandbox: true, args: ['--window-size=1280,720', '--window-position=0,0'] };
+        const launch = { headless: req.headless, chromiumSandbox: true, args: ['--window-size=1280,720', '--window-position=0,0', ...webmcp.launchArgs(req.webmcp)] };
         browserServer = await chromium.launchServer({ ...launch, host: '127.0.0.1' });
         const ownedProcess = browserServer.process();
         ownedProcess.once('exit', (code, signal) => {

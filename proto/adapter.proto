@@ -10,6 +10,7 @@ message BrowserStart {
  string observer_script = 7; string artifact_root = 8; string harness_html = 9;
  bool audio = 10; bool camera = 11; bool calibrate = 12;
  string browser_control = 13; uint32 native_attach_timeout_ms = 14;
+ bool webmcp = 15;
 }
 message BrowserCommand { string operation = 1; string selector = 2; string value = 3; uint32 timeout_ms = 4; string frame_selector = 5; string options_json = 6; }
 message BrowserResult { string json = 1; bytes data = 2; }

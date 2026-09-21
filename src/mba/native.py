@@ -153,6 +153,68 @@ class NativeConnection:
         await page.add_init_script(script)
         await self._read(page, binding, script)
 
+    def _frame_id(self, frame):
+        return self.frames.setdefault(frame, uuid.uuid4().hex)
+
+    async def webmcp_tools(self, page=None):
+        """Tools the page registers through WebMCP, in every frame. Results are untrusted."""
+        if not self.descriptor.get("webmcp"):
+            raise AdapterError("webmcp_disabled", "Start the session with webmcp enabled")
+        page = page or self.selected
+        self.register_page(page)
+        tools, blocked = [], []
+        for frame in page.frames:
+            where = {
+                "page_id": self.pages[page],
+                "frame_id": self._frame_id(frame),
+                "frame_url": frame.url,
+            }
+            try:
+                listing = await asyncio.wait_for(
+                    frame.evaluate(f"({self.descriptor['webmcp_list_script']})()"), 5
+                )
+            except Exception as exc:
+                if "permissions policy" in str(exc) or "NotAllowedError" in str(exc):
+                    blocked.append({**where, "reason": "permissions_policy"})
+                continue
+            tools += [{**tool, **where, "tool_source": "site"} for tool in listing["tools"]]
+        return {"page_id": self.pages[page], "tools": tools, "blocked_frames": blocked}
+
+    async def webmcp_call(self, page, name, arguments=None, *, frame=None, timeout_s=30):
+        """Call a WebMCP page tool. The result is page-provided and untrusted."""
+        if frame is None:
+            frames = {
+                t["frame_id"] for t in (await self.webmcp_tools(page))["tools"] if t["name"] == name
+            }
+            if len(frames) > 1:
+                raise AdapterError("webmcp_ambiguous_tool", f"Tool {name} is in several frames")
+            frame = next((f for f in page.frames if self._frame_id(f) in frames), page.main_frame)
+        where = {"page_id": self.pages[page], "frame_id": self._frame_id(frame), "tool": name}
+        self.enqueue("webmcp.invoked", {**where, "initiator": "adapter", "tool_source": "site"})
+        payload = json.dumps({"name": name, "inputJson": json.dumps(arguments or {})})
+        try:
+            result = await asyncio.wait_for(
+                frame.evaluate(f"({self.descriptor['webmcp_call_script']})({payload})"), timeout_s
+            )
+        except TimeoutError:
+            raise AdapterError("webmcp_timeout", f"Tool {name} did not respond") from None
+        if result["status"] in {"unavailable", "not_found"}:
+            raise AdapterError("webmcp_tool_not_found", f"No WebMCP tool named {name}")
+        output = result.get("output")
+        self.enqueue("webmcp.responded", {**where, "status": result["status"]})
+        try:
+            parsed = json.loads(output) if output is not None else None
+        except ValueError:
+            parsed = output
+        return {
+            **where,
+            "status": result["status"],
+            "result": parsed,
+            "error": result.get("error"),
+            "untrusted": True,
+            "tool_source": "site",
+        }
+
     async def _read(self, page, binding, script):
         root = (
             page.frame_locator(binding["frame_selector"]) if binding.get("frame_selector") else page

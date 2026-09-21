@@ -67,3 +67,31 @@ async def session(tmp_path):
 @pytest.fixture
 def runtime_factory():
     return FakeRuntime
+
+
+@pytest.fixture
+async def worker_endpoint(tmp_path):
+    import socket
+
+    import uvicorn
+
+    from mba.service import create_worker_app
+
+    token = "integration-test-token-with-enough-length"
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    server = uvicorn.Server(
+        uvicorn.Config(
+            create_worker_app(tmp_path, token), log_level="error", ws_max_size=32 * 1024**2
+        )
+    )
+    task = asyncio.create_task(server.serve(sockets=[listener]))
+    try:
+        async with asyncio.timeout(10):
+            while not server.started:  # noqa: ASYNC110 -- third-party server readiness flag
+                await asyncio.sleep(0.01)
+        yield "http://127.0.0.1:" + str(listener.getsockname()[1]), token
+    finally:
+        server.should_exit = True
+        await asyncio.wait_for(task, 20)
+        listener.close()

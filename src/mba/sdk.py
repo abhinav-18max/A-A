@@ -58,10 +58,7 @@ class Client:
 
     async def start_session(self, config: SessionConfig | None = None):
         config = config or SessionConfig()
-        body = config.model_dump(mode="json")
-        if config.storage_state is not None:
-            body["storage_state"] = config.storage_state
-        response = await self.request("POST", "/v1/sessions", json=body)
+        response = await self.request("POST", "/v1/sessions", json=config.request_body())
         return RemoteSession(self, response.json()["session_id"])
 
     def session(self, session_id: str):
@@ -104,9 +101,9 @@ class RemoteSession:
     def __init__(self, client: Client, session_id: str):
         self.client, self.id = client, session_id
         self.path = f"/v1/sessions/{session_id}"
-        from mba.library import Browser, Text
+        from mba.library import Browser, Text, WebMCP
 
-        self.browser, self.text = Browser(self), Text(self)
+        self.browser, self.text, self.webmcp = Browser(self), Text(self), WebMCP(self)
         self.audio, self.camera = RemoteMedia(self, "audio"), RemoteMedia(self, "video")
         self.visual, self.recording = RemoteVisual(self), RemoteRecording(self)
         self._temporary = None

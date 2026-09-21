@@ -65,6 +65,7 @@ class BrowserDriver:
             pb.BrowserStart(
                 protocol_version=1,
                 browser_control=config.browser_control,
+                webmcp=config.webmcp,
                 native_attach_timeout_ms=int(config.native_attach_timeout_s * 1000),
                 headless=config.headless
                 if config.headless is not None

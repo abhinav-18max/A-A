@@ -12,6 +12,7 @@ class SessionInterface(Protocol):
 
     browser: Any
     text: Any
+    webmcp: Any
     audio: Any
     camera: Any
     visual: Any

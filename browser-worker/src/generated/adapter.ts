@@ -59,6 +59,7 @@ export interface BrowserStart {
   calibrate: boolean;
   browserControl: string;
   nativeAttachTimeoutMs: number;
+  webmcp: boolean;
 }
 
 export interface BrowserCommand {
@@ -460,6 +461,7 @@ function createBaseBrowserStart(): BrowserStart {
     calibrate: false,
     browserControl: "",
     nativeAttachTimeoutMs: 0,
+    webmcp: false,
   };
 }
 
@@ -506,6 +508,9 @@ export const BrowserStart: MessageFns<BrowserStart> = {
     }
     if (message.nativeAttachTimeoutMs !== 0) {
       writer.uint32(112).uint32(message.nativeAttachTimeoutMs);
+    }
+    if (message.webmcp !== false) {
+      writer.uint32(120).bool(message.webmcp);
     }
     return writer;
   },
@@ -629,6 +634,14 @@ export const BrowserStart: MessageFns<BrowserStart> = {
           message.nativeAttachTimeoutMs = reader.uint32();
           continue;
         }
+        case 15: {
+          if (tag !== 120) {
+            break;
+          }
+
+          message.webmcp = reader.bool();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -656,6 +669,7 @@ export const BrowserStart: MessageFns<BrowserStart> = {
       calibrate: isSet(object.calibrate) ? globalThis.Boolean(object.calibrate) : false,
       browserControl: isSet(object.browserControl) ? globalThis.String(object.browserControl) : "",
       nativeAttachTimeoutMs: isSet(object.nativeAttachTimeoutMs) ? globalThis.Number(object.nativeAttachTimeoutMs) : 0,
+      webmcp: isSet(object.webmcp) ? globalThis.Boolean(object.webmcp) : false,
     };
   },
 
@@ -703,6 +717,9 @@ export const BrowserStart: MessageFns<BrowserStart> = {
     if (message.nativeAttachTimeoutMs !== 0) {
       obj.nativeAttachTimeoutMs = Math.round(message.nativeAttachTimeoutMs);
     }
+    if (message.webmcp !== false) {
+      obj.webmcp = message.webmcp;
+    }
     return obj;
   },
 
@@ -725,6 +742,7 @@ export const BrowserStart: MessageFns<BrowserStart> = {
     message.calibrate = object.calibrate ?? false;
     message.browserControl = object.browserControl ?? "";
     message.nativeAttachTimeoutMs = object.nativeAttachTimeoutMs ?? 0;
+    message.webmcp = object.webmcp ?? false;
     return message;
   },
 };

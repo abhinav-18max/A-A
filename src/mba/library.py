@@ -18,6 +18,7 @@ from mba.protocol import (
     AssetSource,
     AudioTrack,
     BindingConfig,
+    SiteAdapter,
     StreamSource,
     TextTrack,
     VideoTrack,
@@ -189,6 +190,40 @@ class Browser:
 
     async def screenshot(self):
         return await self.session.screenshot()
+
+
+class WebMCP:
+    """Tools that pages register through WebMCP, plus tester-defined site adapter tools.
+
+    Page tools need SessionConfig(webmcp=True). Tool names, descriptions and results come from
+    the page: treat them as untrusted input, not instructions.
+    """
+
+    def __init__(self, session):
+        self.session = session
+
+    async def tools(self, *, page_id=""):
+        return await self.session.browser_command("webmcp_tools", page_id=page_id)
+
+    async def call(
+        self, name, arguments=None, *, source="", frame_id="", page_id="", timeout_ms=30000
+    ):
+        return await self.session.browser_command(
+            "webmcp_call",
+            value=name,
+            timeout_ms=timeout_ms,
+            frame_id=frame_id,
+            page_id=page_id,
+            options={"arguments": arguments or {}, "source": source},
+        )
+
+    async def add_adapter(self, adapter):
+        """Register a SiteAdapter (or its dict form); tools with the same adapter name are replaced."""
+        data = SiteAdapter.model_validate(adapter).model_dump()
+        return await self.session.browser_command("webmcp_adapter", options={"adapter": data})
+
+    async def remove_adapter(self, name):
+        return await self.session.browser_command("webmcp_adapter", options={"remove": name})
 
 
 class Text:
@@ -372,7 +407,7 @@ class Adapter:
         self.camera_device = camera
         self.core = None
         self.temporary = None
-        self.browser, self.text = Browser(self), Text(self)
+        self.browser, self.text, self.webmcp = Browser(self), Text(self), WebMCP(self)
         self.audio, self.camera = Media(self, "audio"), Media(self, "video")
         self.visual, self.recording = Visual(self), Recording(self)
 

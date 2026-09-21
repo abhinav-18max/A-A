@@ -14885,13 +14885,13 @@ var require_deadline = __commonJS({
     function getRelativeTimeout(deadline) {
       const deadlineMs = deadline instanceof Date ? deadline.getTime() : deadline;
       const now2 = (/* @__PURE__ */ new Date()).getTime();
-      const timeout = deadlineMs - now2;
-      if (timeout < 0) {
+      const timeout2 = deadlineMs - now2;
+      if (timeout2 < 0) {
         return 0;
-      } else if (timeout > MAX_TIMEOUT_TIME) {
+      } else if (timeout2 > MAX_TIMEOUT_TIME) {
         return Infinity;
       } else {
-        return timeout;
+        return timeout2;
       }
     }
     function deadlineToString(deadline) {
@@ -15021,14 +15021,14 @@ var require_single_subchannel_channel = __commonJS({
         }
         const hostname = (_b = (_a = (0, uri_parser_1.splitHostPort)(this.options.host)) === null || _a === void 0 ? void 0 : _a.host) !== null && _b !== void 0 ? _b : "localhost";
         this.serviceUrl = `https://${hostname}/${serviceName}`;
-        const timeout = (0, deadline_1.getRelativeTimeout)(options.deadline);
-        if (timeout !== Infinity) {
-          if (timeout <= 0) {
+        const timeout2 = (0, deadline_1.getRelativeTimeout)(options.deadline);
+        if (timeout2 !== Infinity) {
+          if (timeout2 <= 0) {
             this.cancelWithStatus(constants_1.Status.DEADLINE_EXCEEDED, "Deadline exceeded");
           } else {
             setTimeout(() => {
               this.cancelWithStatus(constants_1.Status.DEADLINE_EXCEEDED, "Deadline exceeded");
-            }, timeout);
+            }, timeout2);
           }
         }
         this.filterStack = filterStackFactory.createFilter();
@@ -17462,9 +17462,9 @@ var require_resolving_call = __commonJS({
         clearTimeout(this.deadlineTimer);
         this.deadlineStartTime = /* @__PURE__ */ new Date();
         this.trace("Deadline: " + (0, deadline_1.deadlineToString)(this.deadline));
-        const timeout = (0, deadline_1.getRelativeTimeout)(this.deadline);
-        if (timeout !== Infinity) {
-          this.trace("Deadline will be reached in " + timeout + "ms");
+        const timeout2 = (0, deadline_1.getRelativeTimeout)(this.deadline);
+        if (timeout2 !== Infinity) {
+          this.trace("Deadline will be reached in " + timeout2 + "ms");
           const handleDeadline = () => {
             if (!this.deadlineStartTime) {
               this.cancelWithStatus(constants_1.Status.DEADLINE_EXCEEDED, "Deadline exceeded");
@@ -17492,10 +17492,10 @@ var require_resolving_call = __commonJS({
             }
             this.cancelWithStatus(constants_1.Status.DEADLINE_EXCEEDED, deadlineInfo.join(","));
           };
-          if (timeout <= 0) {
+          if (timeout2 <= 0) {
             process.nextTick(handleDeadline);
           } else {
-            this.deadlineTimer = setTimeout(handleDeadline, timeout);
+            this.deadlineTimer = setTimeout(handleDeadline, timeout2);
           }
         }
       }
@@ -20243,9 +20243,9 @@ var require_server_interceptors = __commonJS({
           });
           return;
         }
-        const timeout = +match[1] * deadlineUnitsToMs[match[2]] | 0;
+        const timeout2 = +match[1] * deadlineUnitsToMs[match[2]] | 0;
         const now2 = /* @__PURE__ */ new Date();
-        this.deadline = now2.setMilliseconds(now2.getMilliseconds() + timeout);
+        this.deadline = now2.setMilliseconds(now2.getMilliseconds() + timeout2);
         this.deadlineTimer = setTimeout(() => {
           const status2 = {
             code: constants_1.Status.DEADLINE_EXCEEDED,
@@ -20253,7 +20253,7 @@ var require_server_interceptors = __commonJS({
             metadata: null
           };
           this.sendStatus(status2);
-        }, timeout);
+        }, timeout2);
       }
       checkCancelled() {
         if (!this.cancelled && (this.stream.destroyed || this.stream.closed)) {
@@ -26393,7 +26393,7 @@ var require_websocket = __commonJS({
     var http = require("http");
     var net = require("net");
     var tls = require("tls");
-    var { randomBytes: randomBytes2, createHash } = require("crypto");
+    var { randomBytes: randomBytes2, createHash: createHash2 } = require("crypto");
     var { Duplex, Readable } = require("stream");
     var { URL } = require("url");
     var PerMessageDeflate = require_permessage_deflate();
@@ -27050,8 +27050,8 @@ var require_websocket = __commonJS({
           abortHandshake(websocket, socket2, "Invalid Upgrade header");
           return;
         }
-        const digest = createHash("sha1").update(key + GUID).digest("base64");
-        if (res.headers["sec-websocket-accept"] !== digest) {
+        const digest2 = createHash2("sha1").update(key + GUID).digest("base64");
+        if (res.headers["sec-websocket-accept"] !== digest2) {
           abortHandshake(websocket, socket2, "Invalid Sec-WebSocket-Accept header");
           return;
         }
@@ -27417,7 +27417,7 @@ var require_websocket_server = __commonJS({
     var EventEmitter = require("events");
     var http = require("http");
     var { Duplex } = require("stream");
-    var { createHash } = require("crypto");
+    var { createHash: createHash2 } = require("crypto");
     var extension = require_extension();
     var PerMessageDeflate = require_permessage_deflate();
     var subprotocol = require_subprotocol();
@@ -27714,12 +27714,12 @@ var require_websocket_server = __commonJS({
           );
         }
         if (this._state > RUNNING) return abortHandshake(socket2, 503);
-        const digest = createHash("sha1").update(key + GUID).digest("base64");
+        const digest2 = createHash2("sha1").update(key + GUID).digest("base64");
         const headers = [
           "HTTP/1.1 101 Switching Protocols",
           "Upgrade: websocket",
           "Connection: Upgrade",
-          `Sec-WebSocket-Accept: ${digest}`
+          `Sec-WebSocket-Accept: ${digest2}`
         ];
         const ws = new this.options.WebSocket(null, void 0, this.options);
         if (protocols.size) {
@@ -27804,7 +27804,7 @@ var grpc = __toESM(require_src3(), 1);
 var import_playwright = require("playwright");
 var import_promises = require("node:fs/promises");
 var import_node_path = require("node:path");
-var import_node_crypto2 = require("node:crypto");
+var import_node_crypto3 = require("node:crypto");
 var import_node_module = require("node:module");
 
 // src/native-gateway.ts
@@ -27892,6 +27892,273 @@ async function nativeGateway(upstream, onConnect, onClose) {
       await new Promise((resolve2) => server2.close(() => resolve2()));
     }
   };
+}
+
+// src/webmcp.ts
+var import_node_crypto2 = require("node:crypto");
+function launchArgs(enabled) {
+  if (!enabled)
+    return [];
+  const features = process.env.PLAYWRIGHT_LEGACY_SCREENSHOT ? ["WebMCP"] : ["CDPScreenshotNewSurface", "WebMCP"];
+  return ["--enable-features=" + features.join(",")];
+}
+var OUTPUT_LIMIT = 256 * 1024;
+var PREVIEW_LIMIT = 4096;
+var FRAME_TIMEOUT_MS = 5e3;
+var listSource = `async () => {
+  const mc = document.modelContext ?? navigator.modelContext;
+  if (!mc || typeof mc.getTools !== 'function') return { available: false, tools: [] };
+  const tools = await mc.getTools();
+  return { available: true, tools: tools.filter(t => !('window' in t) || t.window === window).map(t => {
+    let schema = t.inputSchema;
+    if (typeof schema === 'string') { try { schema = JSON.parse(schema); } catch { schema = null; } }
+    return { name: String(t.name), title: t.title ? String(t.title) : '', description: String(t.description ?? ''),
+      input_schema: schema ?? null, origin: t.origin ? String(t.origin) : location.origin };
+  }) };
+}`;
+var callSource = `async ({ name, inputJson }) => {
+  const mc = document.modelContext ?? navigator.modelContext;
+  if (!mc || typeof mc.getTools !== 'function') return { status: 'unavailable' };
+  const tool = (await mc.getTools()).find(t => t.name === name && (!('window' in t) || t.window === window));
+  if (!tool) return { status: 'not_found' };
+  try {
+    const output = typeof mc.executeTool === 'function'
+      ? await mc.executeTool(tool, inputJson)
+      : await mc.invokeTool(name, JSON.parse(inputJson));
+    return { status: 'completed', output: typeof output === 'string' ? output : JSON.stringify(output ?? null) };
+  } catch (error) {
+    return { status: 'error', error: String(error && error.message || error) };
+  }
+}`;
+function claim(calls, name, entry) {
+  const now2 = Date.now();
+  for (let i = calls.length - 1; i >= 0; i--)
+    if (calls[i].until < now2)
+      calls.splice(i, 1);
+  const index = entry ? calls.indexOf(entry) : calls.findIndex((c) => c.name === name);
+  if (index < 0)
+    return false;
+  calls.splice(index, 1);
+  return true;
+}
+function timeout(promise, ms) {
+  let timer;
+  return Promise.race([promise, new Promise((resolve2) => {
+    timer = setTimeout(() => resolve2("timeout"), ms);
+  })]).finally(() => clearTimeout(timer));
+}
+function digest(text) {
+  return (0, import_node_crypto2.createHash)("sha256").update(text).digest("hex");
+}
+async function listTools(p, ids) {
+  const tools = [], blocked = [];
+  let available = false;
+  await Promise.all(p.frames().map(async (frame) => {
+    const where = { page_id: ids.page(p) || "", frame_id: ids.frame(frame), document_id: ids.document(frame), frame_url: frame.url() };
+    let listing;
+    try {
+      listing = await timeout(frame.evaluate(`(${listSource})()`), FRAME_TIMEOUT_MS);
+    } catch (error) {
+      if (/permissions policy|NotAllowedError/.test(String(error)))
+        blocked.push({ ...where, reason: "permissions_policy" });
+      return;
+    }
+    if (listing === "timeout") {
+      blocked.push({ ...where, reason: "timeout" });
+      return;
+    }
+    available ||= listing.available;
+    for (const tool of listing.tools)
+      tools.push({ ...tool, ...where, tool_source: "site" });
+  }));
+  return { page_id: ids.page(p), document_id: ids.document(p.mainFrame()), available, tools, blocked_frames: blocked };
+}
+async function callTool(p, frame, name, args, timeoutMs, ids, fail2, calls) {
+  if (!name)
+    fail2("webmcp_tool_required", "Supply the WebMCP tool name as value");
+  if (frame === void 0) {
+    const { tools } = await listTools(p, ids);
+    const frames = [...new Set(tools.filter((t) => t.name === name).map((t) => t.frame_id))];
+    if (frames.length > 1)
+      fail2("webmcp_ambiguous_tool", `Tool ${name} is registered in frames ${frames.join(", ")}; pass frame_id`);
+    frame = frames.length ? p.frames().find((f) => ids.frame(f) === frames[0]) : p.mainFrame();
+    if (!frame)
+      fail2("frame_not_found");
+  }
+  const pending2 = { name, until: Date.now() + timeoutMs + 5e3 };
+  calls.push(pending2);
+  let result;
+  try {
+    result = await timeout(frame.evaluate(`(${callSource})(${JSON.stringify({ name, inputJson: JSON.stringify(args ?? {}) })})`), timeoutMs);
+  } catch (error) {
+    if (/Execution context was destroyed|navigat/i.test(String(error)))
+      return { tool: name, status: "navigated", untrusted: true, tool_source: "site" };
+    throw error;
+  }
+  if (result === "timeout" || result.status === "unavailable" || result.status === "not_found")
+    claim(calls, name, pending2);
+  if (result === "timeout")
+    fail2("webmcp_timeout", `Tool ${name} did not respond within ${timeoutMs} ms`);
+  if (result.status === "unavailable")
+    fail2("webmcp_unavailable", "The page does not expose document.modelContext");
+  if (result.status === "not_found")
+    fail2("webmcp_tool_not_found", `No WebMCP tool named ${name} in this frame`);
+  const where = { page_id: ids.page(p), frame_id: ids.frame(frame), document_id: ids.document(frame) };
+  if (result.status === "error")
+    return { tool: name, ...where, status: "error", error: result.error, untrusted: true, tool_source: "site" };
+  const output = result.output ?? "null", truncated = output.length > OUTPUT_LIMIT;
+  let parsed = null;
+  if (!truncated)
+    try {
+      parsed = JSON.parse(output);
+    } catch {
+      parsed = output;
+    }
+  return {
+    tool: name,
+    ...where,
+    status: "completed",
+    result: parsed,
+    output_text: truncated ? output.slice(0, OUTPUT_LIMIT) : void 0,
+    truncated,
+    output_bytes: Buffer.byteLength(output),
+    output_sha256: digest(output),
+    is_error: !!parsed && typeof parsed === "object" && parsed.isError === true,
+    untrusted: true,
+    tool_source: "site"
+  };
+}
+function preview(value) {
+  const text = typeof value === "string" ? value : JSON.stringify(value ?? null);
+  return { preview: text.slice(0, PREVIEW_LIMIT), bytes: Buffer.byteLength(text), sha256: digest(text) };
+}
+async function observe(p, pageId, emit2, calls) {
+  const frames = /* @__PURE__ */ new Map();
+  const attach = async (target) => {
+    let cdp;
+    try {
+      cdp = await p.context().newCDPSession(target);
+    } catch {
+      return;
+    }
+    if (target !== p) {
+      const previous = frames.get(target);
+      frames.set(target, cdp);
+      await previous?.detach().catch(() => {
+      });
+    }
+    const summary = (t) => ({ name: t.name, description: String(t.description ?? "").slice(0, 500), annotations: t.annotations ?? {}, cdp_frame_id: t.frameId });
+    cdp.on("WebMCP.toolsAdded", (e) => emit2("webmcp.tools_changed", { page_id: pageId, change: "added", tools: e.tools.map(summary) }));
+    cdp.on("WebMCP.toolsRemoved", (e) => emit2("webmcp.tools_changed", { page_id: pageId, change: "removed", tools: e.tools.map((t) => ({ name: t.name, cdp_frame_id: t.frameId })) }));
+    cdp.on("WebMCP.toolInvoked", (e) => emit2("webmcp.invoked", { page_id: pageId, tool: e.toolName, invocation_id: e.invocationId, cdp_frame_id: e.frameId, initiator: claim(calls, e.toolName) ? "adapter" : "page", input: preview(e.input), untrusted: true }));
+    cdp.on("WebMCP.toolResponded", (e) => emit2("webmcp.responded", { page_id: pageId, invocation_id: e.invocationId, status: e.status, error: e.errorText, ...e.output === void 0 ? {} : { output: preview(e.output) }, untrusted: true }));
+    await cdp.send("WebMCP.enable").catch(() => {
+    });
+  };
+  await attach(p);
+  p.on("framenavigated", (frame) => {
+    if (frame !== p.mainFrame()) void attach(frame);
+  });
+  p.on("framedetached", (frame) => {
+    void frames.get(frame)?.detach().catch(() => {
+    });
+    frames.delete(frame);
+  });
+}
+var STEP_OPERATIONS = /* @__PURE__ */ new Set(["open", "click", "fill", "press", "wait", "screenshot", "snapshot", "pages", "back", "forward", "reload", "double_click", "hover", "drag", "click_at", "type", "select", "check", "uncheck", "scroll", "scroll_into_view", "upload", "downloads", "dialog"]);
+var NAME = /^[A-Za-z0-9_.-]{1,64}$/;
+var PLACEHOLDER = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+function validateAdapter(input, fail2) {
+  const invalid = (message) => fail2("invalid_adapter", message);
+  if (!input || typeof input !== "object" || !NAME.test(input.name ?? ""))
+    invalid("adapter.name must match " + NAME);
+  if (!Array.isArray(input.tools) || !input.tools.length || input.tools.length > 64)
+    invalid("adapter.tools must list 1-64 tools");
+  const names = /* @__PURE__ */ new Set();
+  const tools = input.tools.map((tool) => {
+    if (!tool || !NAME.test(tool.name ?? "") || names.has(tool.name))
+      invalid("tool names must be unique and match " + NAME);
+    names.add(tool.name);
+    if (!Array.isArray(tool.steps) || !tool.steps.length || tool.steps.length > 50)
+      invalid(`${tool.name}: steps must list 1-50 operations`);
+    for (const step of tool.steps)
+      if (!step || !STEP_OPERATIONS.has(step.operation))
+        invalid(`${tool.name}: unsupported step operation ${step?.operation}`);
+    const schema = tool.input_schema ?? { type: "object", properties: {} };
+    if (typeof schema !== "object" || Array.isArray(schema))
+      invalid(`${tool.name}: input_schema must be an object`);
+    return { name: tool.name, description: String(tool.description ?? "").slice(0, 2e3), input_schema: schema, steps: tool.steps, read_only: !!tool.read_only };
+  });
+  return { name: input.name, description: String(input.description ?? ""), url_pattern: String(input.url_pattern ?? ""), tools };
+}
+function urlMatches(pattern, url) {
+  if (!pattern)
+    return true;
+  const source = pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*");
+  return new RegExp("^" + source + "$").test(url);
+}
+function render(value, args, fail2) {
+  if (typeof value === "string") {
+    const whole = /^\{\{\s*([A-Za-z0-9_]+)\s*\}\}$/.exec(value);
+    if (whole) {
+      if (!(whole[1] in args))
+        fail2("webmcp_missing_argument", "Missing argument " + whole[1]);
+      return args[whole[1]];
+    }
+    return value.replace(PLACEHOLDER, (_, name) => {
+      if (!(name in args))
+        fail2("webmcp_missing_argument", "Missing argument " + name);
+      return String(args[name]);
+    });
+  }
+  if (Array.isArray(value))
+    return value.map((item) => render(item, args, fail2));
+  if (value && typeof value === "object")
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, render(v, args, fail2)]));
+  return value;
+}
+function testerTools(adapters2, url, where) {
+  return [...adapters2.values()].filter((adapter) => urlMatches(adapter.url_pattern, url)).flatMap((adapter) => adapter.tools.map((tool) => ({
+    name: tool.name,
+    title: "",
+    description: tool.description,
+    input_schema: tool.input_schema,
+    ...where,
+    annotations: { readOnlyHint: tool.read_only },
+    adapter: adapter.name,
+    tool_source: "tester"
+  })));
+}
+function findTester(adapters2, name, url) {
+  for (const adapter of adapters2.values())
+    if (urlMatches(adapter.url_pattern, url)) {
+      for (const tool of adapter.tools)
+        if (tool.name === name)
+          return { adapter, tool };
+    }
+  return void 0;
+}
+async function callTester(adapter, tool, args, run, emit2, where, fail2) {
+  const input = args && typeof args === "object" && !Array.isArray(args) ? args : {};
+  for (const name of Array.isArray(tool.input_schema.required) ? tool.input_schema.required : [])
+    if (!(name in input))
+      fail2("webmcp_missing_argument", "Missing argument " + name);
+  const invocation = (0, import_node_crypto2.createHash)("sha256").update(adapter.name + tool.name + Date.now() + Math.random()).digest("hex").slice(0, 32);
+  const common = { ...where, tool: tool.name, adapter: adapter.name, invocation_id: invocation, tool_source: "tester" };
+  emit2("webmcp.invoked", { ...common, initiator: "adapter", input: preview(input) });
+  const steps = [];
+  for (const [index, step] of tool.steps.entries()) {
+    try {
+      steps.push({ operation: step.operation, result: await run(render(step, input, fail2)) });
+    } catch (error) {
+      const message = String(error instanceof Error ? error.message : error);
+      emit2("webmcp.responded", { ...common, status: "Error", error: message });
+      fail2("webmcp_step_failed", `${tool.name} step ${index} (${step.operation}): ${message}`);
+    }
+  }
+  const result = { steps };
+  emit2("webmcp.responded", { ...common, status: "Completed", output: preview(result) });
+  return { tool: tool.name, adapter: adapter.name, ...where, status: "completed", result, truncated: false, untrusted: true, tool_source: "tester" };
 }
 
 // node_modules/@bufbuild/protobuf/dist/esm/wire/varint.js
@@ -28854,7 +29121,8 @@ function createBaseBrowserStart() {
     camera: false,
     calibrate: false,
     browserControl: "",
-    nativeAttachTimeoutMs: 0
+    nativeAttachTimeoutMs: 0,
+    webmcp: false
   };
 }
 var BrowserStart = {
@@ -28900,6 +29168,9 @@ var BrowserStart = {
     }
     if (message.nativeAttachTimeoutMs !== 0) {
       writer.uint32(112).uint32(message.nativeAttachTimeoutMs);
+    }
+    if (message.webmcp !== false) {
+      writer.uint32(120).bool(message.webmcp);
     }
     return writer;
   },
@@ -29008,6 +29279,13 @@ var BrowserStart = {
           message.nativeAttachTimeoutMs = reader.uint32();
           continue;
         }
+        case 15: {
+          if (tag !== 120) {
+            break;
+          }
+          message.webmcp = reader.bool();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -29031,7 +29309,8 @@ var BrowserStart = {
       camera: isSet(object.camera) ? globalThis.Boolean(object.camera) : false,
       calibrate: isSet(object.calibrate) ? globalThis.Boolean(object.calibrate) : false,
       browserControl: isSet(object.browserControl) ? globalThis.String(object.browserControl) : "",
-      nativeAttachTimeoutMs: isSet(object.nativeAttachTimeoutMs) ? globalThis.Number(object.nativeAttachTimeoutMs) : 0
+      nativeAttachTimeoutMs: isSet(object.nativeAttachTimeoutMs) ? globalThis.Number(object.nativeAttachTimeoutMs) : 0,
+      webmcp: isSet(object.webmcp) ? globalThis.Boolean(object.webmcp) : false
     };
   },
   toJSON(message) {
@@ -29078,6 +29357,9 @@ var BrowserStart = {
     if (message.nativeAttachTimeoutMs !== 0) {
       obj.nativeAttachTimeoutMs = Math.round(message.nativeAttachTimeoutMs);
     }
+    if (message.webmcp !== false) {
+      obj.webmcp = message.webmcp;
+    }
     return obj;
   },
   create(base) {
@@ -29099,6 +29381,7 @@ var BrowserStart = {
     message.calibrate = object.calibrate ?? false;
     message.browserControl = object.browserControl ?? "";
     message.nativeAttachTimeoutMs = object.nativeAttachTimeoutMs ?? 0;
+    message.webmcp = object.webmcp ?? false;
     return message;
   }
 };
@@ -30352,6 +30635,8 @@ var pageIds = /* @__PURE__ */ new WeakMap();
 var frameIds = /* @__PURE__ */ new WeakMap();
 var documents = /* @__PURE__ */ new WeakMap();
 var downloads = [];
+var adapters = /* @__PURE__ */ new Map();
+var webmcpCalls = [];
 var dialogPolicies = /* @__PURE__ */ new WeakMap();
 var listeners = /* @__PURE__ */ new Set();
 var pending = [];
@@ -30375,22 +30660,22 @@ function emit(type, data, at = now()) {
 }
 function frameId(frame) {
   if (!frameIds.has(frame))
-    frameIds.set(frame, (0, import_node_crypto2.randomUUID)());
+    frameIds.set(frame, (0, import_node_crypto3.randomUUID)());
   return frameIds.get(frame);
 }
 function documentId(frame) {
   if (!documents.has(frame))
-    documents.set(frame, (0, import_node_crypto2.randomUUID)());
+    documents.set(frame, (0, import_node_crypto3.randomUUID)());
   return documents.get(frame);
 }
 function track(p) {
   if (pageIds.has(p))
     return;
-  const id = (0, import_node_crypto2.randomUUID)();
+  const id = (0, import_node_crypto3.randomUUID)();
   pages.set(id, p);
   pageIds.set(p, id);
   p.on("framenavigated", (f) => {
-    documents.set(f, (0, import_node_crypto2.randomUUID)());
+    documents.set(f, (0, import_node_crypto3.randomUUID)());
     emit("browser.navigation", { page_id: id, frame_id: frameId(f), document_id: documentId(f), url: f.url() });
   });
   p.on("close", () => {
@@ -30423,7 +30708,7 @@ function track(p) {
   });
   p.on("download", async (download) => {
     try {
-      const path = "downloads/" + (0, import_node_crypto2.randomUUID)();
+      const path = "downloads/" + (0, import_node_crypto3.randomUUID)();
       await (0, import_promises.mkdir)((0, import_node_path.join)(config.artifactRoot, "downloads"), { recursive: true });
       await download.saveAs((0, import_node_path.join)(config.artifactRoot, path));
       downloads.push({ path, filename: download.suggestedFilename(), page_id: id });
@@ -30433,11 +30718,13 @@ function track(p) {
     }
   });
   emit("browser.page_created", { page_id: id });
+  if (config.webmcp)
+    void observe(p, id, emit, webmcpCalls);
 }
 function surface(p, frame) {
   return frame ? p.frameLocator(frame) : p;
 }
-async function observe() {
+async function observe2() {
   if (busy || stopping || !page || !binding.message_selector || config.browserControl === "native")
     return;
   busy = true;
@@ -30469,9 +30756,9 @@ async function observe() {
     busy = false;
   }
 }
-var operations = ["open", "click", "fill", "press", "wait", "screenshot", "text", "snapshot", "pages", "new_page", "select_page", "close_page", "back", "forward", "reload", "double_click", "hover", "drag", "click_at", "type", "select", "check", "uncheck", "scroll", "scroll_into_view", "upload", "downloads", "dialog", "bind_text"];
+var operations = ["open", "click", "fill", "press", "wait", "screenshot", "text", "snapshot", "pages", "new_page", "select_page", "close_page", "back", "forward", "reload", "double_click", "hover", "drag", "click_at", "type", "select", "check", "uncheck", "scroll", "scroll_into_view", "upload", "downloads", "dialog", "bind_text", "webmcp_tools", "webmcp_call", "webmcp_adapter"];
 function capabilities() {
-  return { browser_control: config.browserControl || "tools", playwright_version: version, operations: config.browserControl === "native" ? [] : operations, native_connected: nativeConnected, target_ready: config.browserControl === "native" ? nativeReady : !!page };
+  return { browser_control: config.browserControl || "tools", playwright_version: version, operations: config.browserControl === "native" ? [] : operations, native_connected: nativeConnected, target_ready: config.browserControl === "native" ? nativeReady : !!page, webmcp: { enabled: !!config.webmcp, api: "document.modelContext", adapters: [...adapters.keys()] } };
 }
 function locatorFor(root, selector, options) {
   const target = options.target;
@@ -30495,7 +30782,7 @@ async function command(req) {
   if (req.operation === "native_descriptor") {
     if (!gateway)
       fail("native_disabled");
-    return { endpoint: gateway.endpoint, headers: gateway.headers, playwright_version: version, now_us: now(), target_url: config.targetUrl, binding, observer_script: config.observerScript, context_options: { viewport: { width: 1280, height: 720 }, storage_state: config.storageStateJson ? JSON.parse(config.storageStateJson) : void 0 }, permission_origins: config.permissionOrigins, permissions: [...config.audio ? ["microphone"] : [], ...config.camera ? ["camera"] : []] };
+    return { endpoint: gateway.endpoint, headers: gateway.headers, playwright_version: version, now_us: now(), target_url: config.targetUrl, binding, observer_script: config.observerScript, webmcp: !!config.webmcp, webmcp_list_script: listSource, webmcp_call_script: callSource, context_options: { viewport: { width: 1280, height: 720 }, storage_state: config.storageStateJson ? JSON.parse(config.storageStateJson) : void 0 }, permission_origins: config.permissionOrigins, permissions: [...config.audio ? ["microphone"] : [], ...config.camera ? ["camera"] : []] };
   }
   if (req.operation === "native_observe") {
     if (config.browserControl !== "native" || !nativeConnected || fault)
@@ -30503,7 +30790,7 @@ async function command(req) {
     const rows = options.rows;
     if (!Array.isArray(rows) || rows.length > 256)
       fail("invalid_observations");
-    const allowed = ["text.revision", "text.removed", "browser.page_created", "browser.page_closed", "browser.navigation", "browser.selected", "browser.page_error", "capture.gap", "target.ready"];
+    const allowed = ["text.revision", "text.removed", "browser.page_created", "browser.page_closed", "browser.navigation", "browser.selected", "browser.page_error", "capture.gap", "target.ready", "webmcp.tools_changed", "webmcp.invoked", "webmcp.responded"];
     for (const row of rows) {
       if (!allowed.includes(row.type) || !row.data || typeof row.data !== "object" || !Number.isFinite(row.observed_at_us) || row.observed_at_us < 0)
         fail("invalid_observations");
@@ -30540,13 +30827,13 @@ async function command(req) {
     fail("frame_not_found");
   if (options.expected_document_id && options.expected_document_id !== documentId(selectedFrame || p.mainFrame()))
     fail("stale_document");
-  const timeout = req.timeoutMs || 15e3;
+  const timeout2 = req.timeoutMs || 15e3;
   const root = selectedFrame || surface(p, req.frameSelector || (p === page ? binding.frame_selector : ""));
   const locator = locatorFor(root, req.selector, options);
   const required = () => locator || fail("target_required");
   switch (req.operation) {
     case "open":
-      await p.goto(req.value, { timeout });
+      await p.goto(req.value, { timeout: timeout2 });
       return { url: p.url() };
     case "select_page":
       if (page !== p)
@@ -30558,25 +30845,25 @@ async function command(req) {
       await p.close();
       break;
     case "back":
-      await p.goBack({ timeout });
+      await p.goBack({ timeout: timeout2 });
       break;
     case "forward":
-      await p.goForward({ timeout });
+      await p.goForward({ timeout: timeout2 });
       break;
     case "reload":
-      await p.reload({ timeout });
+      await p.reload({ timeout: timeout2 });
       break;
     case "click":
-      await required().click({ timeout });
+      await required().click({ timeout: timeout2 });
       break;
     case "double_click":
-      await required().dblclick({ timeout });
+      await required().dblclick({ timeout: timeout2 });
       break;
     case "hover":
-      await required().hover({ timeout });
+      await required().hover({ timeout: timeout2 });
       break;
     case "drag":
-      await required().dragTo(locatorFor(root, options.destination || "", { target: options.destination_target }) || fail("destination_required"), { timeout });
+      await required().dragTo(locatorFor(root, options.destination || "", { target: options.destination_target }) || fail("destination_required"), { timeout: timeout2 });
       break;
     case "click_at": {
       const { x, y } = options, viewport = p.viewportSize();
@@ -30586,28 +30873,28 @@ async function command(req) {
       break;
     }
     case "fill":
-      await required().fill(req.value, { timeout });
+      await required().fill(req.value, { timeout: timeout2 });
       break;
     case "type":
-      await required().pressSequentially(req.value, { timeout });
+      await required().pressSequentially(req.value, { timeout: timeout2 });
       break;
     case "press":
       if (locator)
-        await locator.press(req.value, { timeout });
+        await locator.press(req.value, { timeout: timeout2 });
       else
         await p.keyboard.press(req.value);
       break;
     case "select":
-      await required().selectOption(options.values || req.value, { timeout });
+      await required().selectOption(options.values || req.value, { timeout: timeout2 });
       break;
     case "check":
-      await required().check({ timeout });
+      await required().check({ timeout: timeout2 });
       break;
     case "uncheck":
-      await required().uncheck({ timeout });
+      await required().uncheck({ timeout: timeout2 });
       break;
     case "wait":
-      await required().waitFor({ state: options.state || "visible", timeout });
+      await required().waitFor({ state: options.state || "visible", timeout: timeout2 });
       break;
     case "scroll":
       if (!Number.isFinite(options.x || 0) || !Number.isFinite(options.y || 0))
@@ -30615,12 +30902,12 @@ async function command(req) {
       await p.mouse.wheel(options.x || 0, options.y || 0);
       break;
     case "scroll_into_view":
-      await required().scrollIntoViewIfNeeded({ timeout });
+      await required().scrollIntoViewIfNeeded({ timeout: timeout2 });
       break;
     case "upload": {
       if (!/^[a-f0-9]{32}$/.test(req.value))
         fail("invalid_asset");
-      await required().setInputFiles((0, import_node_path.resolve)(config.artifactRoot, "assets", req.value), { timeout });
+      await required().setInputFiles((0, import_node_path.resolve)(config.artifactRoot, "assets", req.value), { timeout: timeout2 });
       break;
     }
     case "downloads":
@@ -30632,23 +30919,23 @@ async function command(req) {
       if (page !== p)
         page = p;
       binding = options.binding || {};
-      await observe();
+      await observe2();
       return { binding };
     case "snapshot":
-      return { page_id: pageIds.get(p), document_id: documentId(p.mainFrame()), url: p.url(), title: await p.title(), viewport: p.viewportSize(), observed_at_us: now(), accessibility: await p.locator("body").ariaSnapshot({ timeout }), frames: p.frames().map((f) => ({ frame_id: frameId(f), document_id: documentId(f), url: f.url(), name: f.name() })) };
+      return { page_id: pageIds.get(p), document_id: documentId(p.mainFrame()), url: p.url(), title: await p.title(), viewport: p.viewportSize(), observed_at_us: now(), accessibility: await p.locator("body").ariaSnapshot({ timeout: timeout2 }), frames: p.frames().map((f) => ({ frame_id: frameId(f), document_id: documentId(f), url: f.url(), name: f.name() })) };
     case "text": {
       if (!binding.input_selector)
         fail("binding_required");
       const input = root.locator(binding.input_selector);
-      await input.fill(req.value, { timeout });
+      await input.fill(req.value, { timeout: timeout2 });
       if (binding.submit_selector)
-        await root.locator(binding.submit_selector).click({ timeout });
+        await root.locator(binding.submit_selector).click({ timeout: timeout2 });
       else
-        await input.press("Enter", { timeout });
+        await input.press("Enter", { timeout: timeout2 });
       if (binding.acknowledgement_selector)
-        await root.locator(binding.acknowledgement_selector).filter({ hasText: req.value }).last().waitFor({ timeout });
+        await root.locator(binding.acknowledgement_selector).filter({ hasText: req.value }).last().waitFor({ timeout: timeout2 });
       else {
-        const deadline = Date.now() + timeout;
+        const deadline = Date.now() + timeout2;
         while (true) {
           const value = await input.evaluate((el) => "value" in el ? el.value : el.innerText);
           if (!value.trim())
@@ -30661,15 +30948,49 @@ async function command(req) {
       break;
     }
     case "screenshot": {
-      const path = "frames/checkpoint-" + (0, import_node_crypto2.randomUUID)() + ".png";
+      const path = "frames/checkpoint-" + (0, import_node_crypto3.randomUUID)() + ".png";
       await (0, import_promises.mkdir)((0, import_node_path.join)(config.artifactRoot, "frames"), { recursive: true });
-      await p.screenshot({ path: (0, import_node_path.join)(config.artifactRoot, path), timeout });
+      await p.screenshot({ path: (0, import_node_path.join)(config.artifactRoot, path), timeout: timeout2 });
       return { path, page_id: pageIds.get(p), document_id: documentId(p.mainFrame()) };
     }
     case "leave":
       if (binding.leave_selector)
         await root.locator(binding.leave_selector).click({ timeout: 2e3 });
       break;
+    case "webmcp_adapter": {
+      if (options.remove) {
+        adapters.delete(String(options.remove));
+        return { adapters: [...adapters.keys()] };
+      }
+      const adapter = validateAdapter(options.adapter, fail);
+      adapters.set(adapter.name, adapter);
+      return { adapter: adapter.name, tools: adapter.tools.map((t) => t.name), adapters: [...adapters.keys()] };
+    }
+    case "webmcp_tools": {
+      const where = { page_id: pageIds.get(p), frame_id: frameId(p.mainFrame()), document_id: documentId(p.mainFrame()), frame_url: p.url() };
+      const tester = testerTools(adapters, p.url(), where);
+      if (!config.webmcp) {
+        if (!tester.length)
+          fail("webmcp_disabled", "Start the session with webmcp enabled or register a site adapter");
+        return { page_id: where.page_id, document_id: where.document_id, site_enabled: false, available: false, tools: tester, blocked_frames: [] };
+      }
+      const listing = await listTools(p, webmcpIds);
+      return { ...listing, site_enabled: true, tools: [...listing.tools, ...tester] };
+    }
+    case "webmcp_call": {
+      const source = options.source || "";
+      const found = source === "site" ? void 0 : findTester(adapters, req.value, p.url());
+      if (found) {
+        const where = { page_id: pageIds.get(p) };
+        const run = (step) => command({ operation: step.operation, selector: step.selector || "", value: step.value || "", timeoutMs: step.timeout_ms || timeout2, frameSelector: step.frame_selector || "", optionsJson: JSON.stringify({ page_id: pageIds.get(p), ...step.options || {} }) });
+        return callTester(found.adapter, found.tool, options.arguments, run, emit, where, fail);
+      }
+      if (source === "tester")
+        fail("webmcp_tool_not_found", `No site adapter tool named ${req.value} for this page`);
+      if (!config.webmcp)
+        fail("webmcp_disabled", "Start the session with webmcp enabled to call page tools");
+      return callTool(p, selectedFrame, req.value, options.arguments, req.timeoutMs || 3e4, webmcpIds, fail, webmcpCalls);
+    }
     case "calibration": {
       if (binding.kind !== "harness")
         fail("not_calibration");
@@ -30692,7 +31013,8 @@ async function command(req) {
   }
   return {};
 }
-var readOperations = /* @__PURE__ */ new Set(["capabilities", "native_descriptor", "native_observe", "snapshot", "pages", "screenshot", "wait", "downloads"]);
+var readOperations = /* @__PURE__ */ new Set(["capabilities", "native_descriptor", "native_observe", "snapshot", "pages", "screenshot", "wait", "downloads", "webmcp_tools"]);
+var webmcpIds = { page: (p) => pageIds.get(p), frame: frameId, document: documentId };
 function dispatch(req) {
   if (readOperations.has(req.operation))
     return command(req);
@@ -30750,7 +31072,7 @@ var service = {
       fail("already_started");
     config = req;
     binding = req.bindingJson ? JSON.parse(req.bindingJson) : {};
-    const launch = { headless: req.headless, chromiumSandbox: true, args: ["--window-size=1280,720", "--window-position=0,0"] };
+    const launch = { headless: req.headless, chromiumSandbox: true, args: ["--window-size=1280,720", "--window-position=0,0", ...launchArgs(req.webmcp)] };
     browserServer = await import_playwright.chromium.launchServer({ ...launch, host: "127.0.0.1" });
     const ownedProcess = browserServer.process();
     ownedProcess.once("exit", (code, signal) => {
@@ -30806,7 +31128,7 @@ var service = {
         await surface(page, binding.frame_selector).locator(binding.ready_selector).waitFor({ state: "visible" });
       if (req.calibrate)
         emit("devices.verified", { browser_settings: await page.evaluate(() => window.harness.settings) });
-      polling = setInterval(() => void observe(), 50);
+      polling = setInterval(() => void observe2(), 50);
       emit("target.ready", { url: page.url(), browser_version: browser.version() });
     }
     return { protocolVersion: 1, nowUs: now(), environment: {}, capabilities: ["text", "browser", "screenshot"] };
