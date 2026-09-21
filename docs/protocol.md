@@ -153,12 +153,15 @@ itself and Chromium keeps only the last copy of a repeated switch.
 
 | Operation | Value / options | Result |
 |---|---|---|
-| `webmcp_tools` | `page_id` | `tools` (per frame, with `tool_source`), `blocked_frames`, `available`, `site_enabled` |
+| `webmcp_tools` | `page_id` | `tools` (per frame, with `tool_source`), `blocked_frames`, `available` (page exposes the API), `flag_enabled` |
 | `webmcp_call` | value = tool name; `arguments`, `source` (`site`/`tester`), `frame_id`, `timeout_ms` | `status` (`completed`/`error`/`navigated`), `result` or truncated `output_text`, `output_bytes`, `output_sha256`, `untrusted: true` |
 | `webmcp_adapter` | `adapter` (SiteAdapter) or `remove` (name) | Registered adapter names |
 
-Errors: `webmcp_disabled`, `webmcp_tool_not_found`, `webmcp_ambiguous_tool` (pass
-`frame_id`), `webmcp_timeout`, `webmcp_unavailable`, `webmcp_missing_argument`,
+The operations work with or without the flag: origin-trial sites expose tools in ordinary
+Chrome. Journal events carry `tool`, `tool_source` and `initiator`.
+
+Errors: `webmcp_unavailable` (no API on the page), `webmcp_tool_not_found`, `webmcp_ambiguous_tool` (pass
+`frame_id`), `webmcp_timeout`, `webmcp_missing_argument`,
 `webmcp_step_failed`, `invalid_adapter`. Page tools are discovered with
 `document.modelContext.getTools()` in every frame and called with
 `executeTool(tool, inputJson)`; the Chromium DevTools `WebMCP` domain supplies the

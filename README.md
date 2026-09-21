@@ -246,7 +246,10 @@ the deployment; the optional container worker provides a stronger boundary.
 
 [WebMCP](https://webmachinelearning.github.io/webmcp/) lets a page register tools
 (`document.modelContext.registerTool`) that an agent calls instead of driving the UI.
-Chromium 153 ships it behind a feature flag; `SessionConfig(webmcp=True)` enables it.
+Chromium 153 ships it behind a feature flag, which `SessionConfig(webmcp=True)` turns on.
+Sites in Chrome's origin trial (Target, WordPress Playground) expose tools without the flag;
+A&A lists, calls and journals page tools either way. See the
+[live-site findings](docs/webmcp-real-sites.md) for what WebMCP does and does not change.
 
 ```python
 async with Adapter(SessionConfig(recording=False, webmcp=True, target_url=URL)) as session:
@@ -259,8 +262,8 @@ and must be treated as data, never instructions. Calls time out (default 30 s), 
 output at 256 KiB, and report `navigated` if the page unloads. Each page has a DevTools
 observer, so `webmcp.tools_changed`, `webmcp.invoked` and `webmcp.responded` events
 record every invocation — including ones made by the page's own code — with an
-output preview and SHA-256. Cross-origin iframes expose tools only with `allow="tools"`.
-Sites in Chrome's WebMCP origin trial work without the flag.
+output preview and SHA-256. Cross-origin iframes expose tools only with `allow="tools"`. Survey a site with
+`uv run python tools/webmcp_survey.py <url>`.
 
 Sites without WebMCP have no page tools. A **site adapter** gives the harness the same
 named-tool interface anyway: each tool is a list of ordinary browser operations with

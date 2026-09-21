@@ -60,6 +60,16 @@ during the run and succeeded on retry. `npm audit` reports pre-existing advisori
 the worker's `ws` 8.18.3 and `@grpc/grpc-js` 1.14.0 (fixed in 8.21.3 and 1.14.5); they
 were not changed here. The new harness-client `ws` dependency is 8.21.3.
 
+### Live WebMCP sites — 2026-09-21
+
+Read-only runs on target.com, developers.openai.com, playground.wordpress.net, toban.app,
+computer.webmcp.com, render.com, coinranking.com, omio.com and docket.io, through the
+library, the MCP server and native mode. Results and measurements are in
+[WebMCP on live sites](webmcp-real-sites.md). The run found and fixed three defects (event
+stream closed on bursts, origin-trial tools refused without the flag, unnamed response
+events); after the fixes the browser suites pass (29) and the Linux ARM64 container
+acceptance above passes again on a rebuilt image.
+
 ## 0.2.0 external harness integration — 2026-09-20
 
 All executed checks below passed. This was not a full Linux media acceptance sign-off.
