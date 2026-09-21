@@ -58,6 +58,7 @@ class Client:
 
     async def start_session(self, config: SessionConfig | None = None):
         config = config or SessionConfig()
+        config.reject_remote_browser()
         response = await self.request("POST", "/v1/sessions", json=config.request_body())
         return RemoteSession(self, response.json()["session_id"])
 

@@ -71,6 +71,7 @@ class Tools:
     async def call(self, name, args):
         if name == "aa_session_create":
             config = SessionConfig.model_validate(args.get("config", {}))
+            config.reject_remote_browser()
             session = (
                 await self.client.start_session(config)
                 if self.client

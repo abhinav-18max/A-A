@@ -52,6 +52,10 @@ pub struct BrowserStart {
     pub native_attach_timeout_ms: u32,
     #[prost(bool, tag = "15")]
     pub webmcp: bool,
+    #[prost(string, tag = "16")]
+    pub remote_cdp_url: ::prost::alloc::string::String,
+    #[prost(string, tag = "17")]
+    pub remote_cdp_headers_json: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BrowserCommand {

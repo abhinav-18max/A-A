@@ -4,7 +4,7 @@ __version__ = "0.3.0"
 
 from mba.interfaces import SessionInterface
 from mba.library import Adapter, AudioChunk, AudioFormat, SessionConfig, VideoFormat, VideoFrame
-from mba.protocol import AdapterStep, AdapterTool, BindingConfig, SiteAdapter
+from mba.protocol import AdapterStep, AdapterTool, BindingConfig, RemoteBrowser, SiteAdapter
 
 __all__ = [
     "Adapter",
@@ -13,6 +13,7 @@ __all__ = [
     "AudioChunk",
     "AudioFormat",
     "BindingConfig",
+    "RemoteBrowser",
     "SessionConfig",
     "SessionInterface",
     "SiteAdapter",

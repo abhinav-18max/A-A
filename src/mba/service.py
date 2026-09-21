@@ -72,6 +72,7 @@ def create_worker_app(root: Path, token: str, runtime_factory=None, session_id: 
 
     @app.post("/v1/sessions", dependencies=[Depends(authorize)])
     async def start(config: SessionConfig):
+        config.reject_remote_browser()
         async with start_lock:
             if sessions:
                 raise AdapterError("worker_occupied", "worker accepts exactly one session")

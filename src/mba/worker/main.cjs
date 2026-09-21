@@ -29122,7 +29122,9 @@ function createBaseBrowserStart() {
     calibrate: false,
     browserControl: "",
     nativeAttachTimeoutMs: 0,
-    webmcp: false
+    webmcp: false,
+    remoteCdpUrl: "",
+    remoteCdpHeadersJson: ""
   };
 }
 var BrowserStart = {
@@ -29171,6 +29173,12 @@ var BrowserStart = {
     }
     if (message.webmcp !== false) {
       writer.uint32(120).bool(message.webmcp);
+    }
+    if (message.remoteCdpUrl !== "") {
+      writer.uint32(130).string(message.remoteCdpUrl);
+    }
+    if (message.remoteCdpHeadersJson !== "") {
+      writer.uint32(138).string(message.remoteCdpHeadersJson);
     }
     return writer;
   },
@@ -29286,6 +29294,20 @@ var BrowserStart = {
           message.webmcp = reader.bool();
           continue;
         }
+        case 16: {
+          if (tag !== 130) {
+            break;
+          }
+          message.remoteCdpUrl = reader.string();
+          continue;
+        }
+        case 17: {
+          if (tag !== 138) {
+            break;
+          }
+          message.remoteCdpHeadersJson = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -29310,7 +29332,9 @@ var BrowserStart = {
       calibrate: isSet(object.calibrate) ? globalThis.Boolean(object.calibrate) : false,
       browserControl: isSet(object.browserControl) ? globalThis.String(object.browserControl) : "",
       nativeAttachTimeoutMs: isSet(object.nativeAttachTimeoutMs) ? globalThis.Number(object.nativeAttachTimeoutMs) : 0,
-      webmcp: isSet(object.webmcp) ? globalThis.Boolean(object.webmcp) : false
+      webmcp: isSet(object.webmcp) ? globalThis.Boolean(object.webmcp) : false,
+      remoteCdpUrl: isSet(object.remoteCdpUrl) ? globalThis.String(object.remoteCdpUrl) : "",
+      remoteCdpHeadersJson: isSet(object.remoteCdpHeadersJson) ? globalThis.String(object.remoteCdpHeadersJson) : ""
     };
   },
   toJSON(message) {
@@ -29360,6 +29384,12 @@ var BrowserStart = {
     if (message.webmcp !== false) {
       obj.webmcp = message.webmcp;
     }
+    if (message.remoteCdpUrl !== "") {
+      obj.remoteCdpUrl = message.remoteCdpUrl;
+    }
+    if (message.remoteCdpHeadersJson !== "") {
+      obj.remoteCdpHeadersJson = message.remoteCdpHeadersJson;
+    }
     return obj;
   },
   create(base) {
@@ -29382,6 +29412,8 @@ var BrowserStart = {
     message.browserControl = object.browserControl ?? "";
     message.nativeAttachTimeoutMs = object.nativeAttachTimeoutMs ?? 0;
     message.webmcp = object.webmcp ?? false;
+    message.remoteCdpUrl = object.remoteCdpUrl ?? "";
+    message.remoteCdpHeadersJson = object.remoteCdpHeadersJson ?? "";
     return message;
   }
 };
@@ -30758,7 +30790,7 @@ async function observe2() {
 }
 var operations = ["open", "click", "fill", "press", "wait", "screenshot", "text", "snapshot", "pages", "new_page", "select_page", "close_page", "back", "forward", "reload", "double_click", "hover", "drag", "click_at", "type", "select", "check", "uncheck", "scroll", "scroll_into_view", "upload", "downloads", "dialog", "bind_text", "webmcp_tools", "webmcp_call", "webmcp_adapter"];
 function capabilities() {
-  return { browser_control: config.browserControl || "tools", playwright_version: version, operations: config.browserControl === "native" ? [] : operations, native_connected: nativeConnected, target_ready: config.browserControl === "native" ? nativeReady : !!page, webmcp: { enabled: !!config.webmcp, api: "document.modelContext", adapters: [...adapters.keys()] } };
+  return { browser_control: config.browserControl || "tools", playwright_version: version, operations: config.browserControl === "native" ? [] : operations, native_connected: nativeConnected, target_ready: config.browserControl === "native" ? nativeReady : !!page, remote_browser: !!config.remoteCdpUrl, webmcp: { enabled: !!config.webmcp, api: "document.modelContext", adapters: [...adapters.keys()] } };
 }
 function locatorFor(root, selector, options) {
   const target = options.target;
@@ -31072,19 +31104,24 @@ var service = {
       fail("already_started");
     config = req;
     binding = req.bindingJson ? JSON.parse(req.bindingJson) : {};
-    const launch = { headless: req.headless, chromiumSandbox: true, args: ["--window-size=1280,720", "--window-position=0,0", ...launchArgs(req.webmcp)] };
-    browserServer = await import_playwright.chromium.launchServer({ ...launch, host: "127.0.0.1" });
-    const ownedProcess = browserServer.process();
-    ownedProcess.once("exit", (code, signal) => {
-      console.error("owned browser exited", code, signal);
-      for (const stream of ownedProcess.stdio) stream?.destroy();
-    });
-    browserServer.on("close", () => {
-      if (!stopping) {
-        fault = "browser_disconnected";
-        emit("browser.error", { reason: fault });
-      }
-    });
+    const remote = !!req.remoteCdpUrl;
+    if (remote && req.browserControl === "native")
+      fail("remote_browser_unsupported", "A remote CDP browser supports tools mode only");
+    if (!remote) {
+      const launch = { headless: req.headless, chromiumSandbox: true, args: ["--window-size=1280,720", "--window-position=0,0", ...launchArgs(req.webmcp)] };
+      browserServer = await import_playwright.chromium.launchServer({ ...launch, host: "127.0.0.1" });
+      const ownedProcess = browserServer.process();
+      ownedProcess.once("exit", (code, signal) => {
+        console.error("owned browser exited", code, signal);
+        for (const stream of ownedProcess.stdio) stream?.destroy();
+      });
+      browserServer.on("close", () => {
+        if (!stopping) {
+          fault = "browser_disconnected";
+          emit("browser.error", { reason: fault });
+        }
+      });
+    }
     if (req.browserControl === "native") {
       gateway = await nativeGateway(browserServer.wsEndpoint(), () => {
         nativeConnected = true;
@@ -31101,15 +31138,16 @@ var service = {
       }, req.nativeAttachTimeoutMs || 12e4);
       emit("browser.awaiting_client", {});
     } else {
-      browser = await import_playwright.chromium.connect(browserServer.wsEndpoint());
+      browser = remote ? await import_playwright.chromium.connectOverCDP(req.remoteCdpUrl, { headers: req.remoteCdpHeadersJson ? JSON.parse(req.remoteCdpHeadersJson) : void 0, timeout: 3e4 }) : await import_playwright.chromium.connect(browserServer.wsEndpoint());
       browser.on("disconnected", () => {
         if (!stopping) {
           fault = "browser_disconnected";
           emit("browser.error", { reason: fault });
         }
       });
-      context = await browser.newContext({ viewport: { width: 1280, height: 720 }, storageState: req.storageStateJson ? JSON.parse(req.storageStateJson) : void 0, acceptDownloads: true });
+      context = remote && !req.storageStateJson && browser.contexts().length ? browser.contexts()[0] : await browser.newContext({ viewport: { width: 1280, height: 720 }, storageState: req.storageStateJson ? JSON.parse(req.storageStateJson) : void 0, acceptDownloads: !remote });
       context.on("page", track);
+      context.pages().forEach(track);
       const permissions = [...req.audio ? ["microphone"] : [], ...req.camera ? ["camera"] : []];
       for (const origin of req.permissionOrigins)
         if (permissions.length)
@@ -31118,7 +31156,7 @@ var service = {
         await context.route("http://127.0.0.1/mba-harness", (route) => route.fulfill({ body: req.harnessHtml, contentType: "text/html" }));
       if (req.observerScript && binding.message_selector)
         await context.addInitScript({ content: req.observerScript.replace("__MBA_CONFIG__", () => JSON.stringify(binding)) });
-      page = await context.newPage();
+      page = remote && context.pages()[0] || await context.newPage();
       track(page);
       if (req.targetUrl)
         await page.goto(req.targetUrl);
@@ -31129,7 +31167,7 @@ var service = {
       if (req.calibrate)
         emit("devices.verified", { browser_settings: await page.evaluate(() => window.harness.settings) });
       polling = setInterval(() => void observe2(), 50);
-      emit("target.ready", { url: page.url(), browser_version: browser.version() });
+      emit("target.ready", { url: page.url(), browser_version: browser.version(), remote_browser: remote });
     }
     return { protocolVersion: 1, nowUs: now(), environment: {}, capabilities: ["text", "browser", "screenshot"] };
   }),

@@ -119,7 +119,7 @@ async function observe() {
     }
 }
 const operations = ['open', 'click', 'fill', 'press', 'wait', 'screenshot', 'text', 'snapshot', 'pages', 'new_page', 'select_page', 'close_page', 'back', 'forward', 'reload', 'double_click', 'hover', 'drag', 'click_at', 'type', 'select', 'check', 'uncheck', 'scroll', 'scroll_into_view', 'upload', 'downloads', 'dialog', 'bind_text', 'webmcp_tools', 'webmcp_call', 'webmcp_adapter'];
-function capabilities() { return { browser_control: config.browserControl || 'tools', playwright_version: version, operations: config.browserControl === 'native' ? [] : operations, native_connected: nativeConnected, target_ready: config.browserControl === 'native' ? nativeReady : !!page, webmcp: { enabled: !!config.webmcp, api: 'document.modelContext', adapters: [...adapters.keys()] } }; }
+function capabilities() { return { browser_control: config.browserControl || 'tools', playwright_version: version, operations: config.browserControl === 'native' ? [] : operations, native_connected: nativeConnected, target_ready: config.browserControl === 'native' ? nativeReady : !!page, remote_browser: !!config.remoteCdpUrl, webmcp: { enabled: !!config.webmcp, api: 'document.modelContext', adapters: [...adapters.keys()] } }; }
 function locatorFor(root: Page | Frame | ReturnType<Page['frameLocator']>, selector: string, options: any): Locator | undefined {
     const target = options.target;
     if (target) {
@@ -424,35 +424,48 @@ const service: BrowserServer = {
             fail('already_started');
         config = req;
         binding = req.bindingJson ? JSON.parse(req.bindingJson) : {};
-        const launch = { headless: req.headless, chromiumSandbox: true, args: ['--window-size=1280,720', '--window-position=0,0', ...webmcp.launchArgs(req.webmcp)] };
-        browserServer = await chromium.launchServer({ ...launch, host: '127.0.0.1' });
-        const ownedProcess = browserServer.process();
-        ownedProcess.once('exit', (code, signal) => {
-            console.error('owned browser exited', code, signal);
-            // Node emits 'close' only after all stdio pipes close. A sandboxed
-            // Chromium descendant may retain a pipe after the browser exits.
-            // Once the owned process has exited, no protocol traffic is valid.
-            for (const stream of ownedProcess.stdio) stream?.destroy();
-        });
-        browserServer.on('close', () => { if (!stopping) {
-            fault = 'browser_disconnected';
-            emit('browser.error', { reason: fault });
-        } });
+        // A remote CDP browser (for example Browserbase) is text-only: its devices are not ours.
+        const remote = !!req.remoteCdpUrl;
+        if (remote && req.browserControl === 'native')
+            fail('remote_browser_unsupported', 'A remote CDP browser supports tools mode only');
+        if (!remote) {
+            const launch = { headless: req.headless, chromiumSandbox: true, args: ['--window-size=1280,720', '--window-position=0,0', ...webmcp.launchArgs(req.webmcp)] };
+            browserServer = await chromium.launchServer({ ...launch, host: '127.0.0.1' });
+            const ownedProcess = browserServer.process();
+            ownedProcess.once('exit', (code, signal) => {
+                console.error('owned browser exited', code, signal);
+                // Node emits 'close' only after all stdio pipes close. A sandboxed
+                // Chromium descendant may retain a pipe after the browser exits.
+                // Once the owned process has exited, no protocol traffic is valid.
+                for (const stream of ownedProcess.stdio) stream?.destroy();
+            });
+            browserServer.on('close', () => { if (!stopping) {
+                fault = 'browser_disconnected';
+                emit('browser.error', { reason: fault });
+            } });
+        }
         if (req.browserControl === 'native') {
-            gateway = await nativeGateway(browserServer.wsEndpoint(), () => { nativeConnected = true; emit('browser.native_connected', {}); }, () => { nativeConnected = false; nativeReady = false; fault = 'native_client_disconnected'; emit('browser.error', { reason: fault }); });
+            gateway = await nativeGateway(browserServer!.wsEndpoint(), () => { nativeConnected = true; emit('browser.native_connected', {}); }, () => { nativeConnected = false; nativeReady = false; fault = 'native_client_disconnected'; emit('browser.error', { reason: fault }); });
             attachTimer = setTimeout(() => { fault = 'native_attach_timeout'; emit('browser.error', { reason: fault }); }, req.nativeAttachTimeoutMs || 120000);
             emit('browser.awaiting_client', {});
         }
         else {
             // Tools mode connects its own controller to the same owned browser server.
             // The shared process-exit hook also bounds headed text-only shutdown.
-            browser = await chromium.connect(browserServer.wsEndpoint());
+            browser = remote
+                ? await chromium.connectOverCDP(req.remoteCdpUrl, { headers: req.remoteCdpHeadersJson ? JSON.parse(req.remoteCdpHeadersJson) : undefined, timeout: 30000 })
+                : await chromium.connect(browserServer!.wsEndpoint());
             browser.on('disconnected', () => { if (!stopping) {
                 fault = 'browser_disconnected';
                 emit('browser.error', { reason: fault });
             } });
-            context = await browser.newContext({ viewport: { width: 1280, height: 720 }, storageState: req.storageStateJson ? JSON.parse(req.storageStateJson) : undefined, acceptDownloads: true });
+            // Remote services usually expose one preconfigured context; reuse it unless the
+            // caller supplies storage state, which requires a new context.
+            context = remote && !req.storageStateJson && browser.contexts().length
+                ? browser.contexts()[0]
+                : await browser.newContext({ viewport: { width: 1280, height: 720 }, storageState: req.storageStateJson ? JSON.parse(req.storageStateJson) : undefined, acceptDownloads: !remote });
             context.on('page', track);
+            context.pages().forEach(track);
             const permissions = [...(req.audio ? ['microphone'] : []), ...(req.camera ? ['camera'] : [])];
             for (const origin of req.permissionOrigins)
                 if (permissions.length)
@@ -461,7 +474,7 @@ const service: BrowserServer = {
                 await context.route('http://127.0.0.1/mba-harness', route => route.fulfill({ body: req.harnessHtml, contentType: 'text/html' }));
             if (req.observerScript && binding.message_selector)
                 await context.addInitScript({ content: req.observerScript.replace('__MBA_CONFIG__', () => JSON.stringify(binding)) });
-            page = await context.newPage();
+            page = (remote && context.pages()[0]) || await context.newPage();
             track(page);
             if (req.targetUrl)
                 await page.goto(req.targetUrl);
@@ -472,7 +485,7 @@ const service: BrowserServer = {
             if (req.calibrate)
                 emit('devices.verified', { browser_settings: await page.evaluate(() => (window as any).harness.settings) });
             polling = setInterval(() => void observe(), 50);
-            emit('target.ready', { url: page.url(), browser_version: browser.version() });
+            emit('target.ready', { url: page.url(), browser_version: browser.version(), remote_browser: remote });
         }
         return { protocolVersion: 1, nowUs: now(), environment: {}, capabilities: ['text', 'browser', 'screenshot'] };
     }),

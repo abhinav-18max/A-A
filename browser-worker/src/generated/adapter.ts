@@ -60,6 +60,8 @@ export interface BrowserStart {
   browserControl: string;
   nativeAttachTimeoutMs: number;
   webmcp: boolean;
+  remoteCdpUrl: string;
+  remoteCdpHeadersJson: string;
 }
 
 export interface BrowserCommand {
@@ -462,6 +464,8 @@ function createBaseBrowserStart(): BrowserStart {
     browserControl: "",
     nativeAttachTimeoutMs: 0,
     webmcp: false,
+    remoteCdpUrl: "",
+    remoteCdpHeadersJson: "",
   };
 }
 
@@ -511,6 +515,12 @@ export const BrowserStart: MessageFns<BrowserStart> = {
     }
     if (message.webmcp !== false) {
       writer.uint32(120).bool(message.webmcp);
+    }
+    if (message.remoteCdpUrl !== "") {
+      writer.uint32(130).string(message.remoteCdpUrl);
+    }
+    if (message.remoteCdpHeadersJson !== "") {
+      writer.uint32(138).string(message.remoteCdpHeadersJson);
     }
     return writer;
   },
@@ -642,6 +652,22 @@ export const BrowserStart: MessageFns<BrowserStart> = {
           message.webmcp = reader.bool();
           continue;
         }
+        case 16: {
+          if (tag !== 130) {
+            break;
+          }
+
+          message.remoteCdpUrl = reader.string();
+          continue;
+        }
+        case 17: {
+          if (tag !== 138) {
+            break;
+          }
+
+          message.remoteCdpHeadersJson = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -670,6 +696,8 @@ export const BrowserStart: MessageFns<BrowserStart> = {
       browserControl: isSet(object.browserControl) ? globalThis.String(object.browserControl) : "",
       nativeAttachTimeoutMs: isSet(object.nativeAttachTimeoutMs) ? globalThis.Number(object.nativeAttachTimeoutMs) : 0,
       webmcp: isSet(object.webmcp) ? globalThis.Boolean(object.webmcp) : false,
+      remoteCdpUrl: isSet(object.remoteCdpUrl) ? globalThis.String(object.remoteCdpUrl) : "",
+      remoteCdpHeadersJson: isSet(object.remoteCdpHeadersJson) ? globalThis.String(object.remoteCdpHeadersJson) : "",
     };
   },
 
@@ -720,6 +748,12 @@ export const BrowserStart: MessageFns<BrowserStart> = {
     if (message.webmcp !== false) {
       obj.webmcp = message.webmcp;
     }
+    if (message.remoteCdpUrl !== "") {
+      obj.remoteCdpUrl = message.remoteCdpUrl;
+    }
+    if (message.remoteCdpHeadersJson !== "") {
+      obj.remoteCdpHeadersJson = message.remoteCdpHeadersJson;
+    }
     return obj;
   },
 
@@ -743,6 +777,8 @@ export const BrowserStart: MessageFns<BrowserStart> = {
     message.browserControl = object.browserControl ?? "";
     message.nativeAttachTimeoutMs = object.nativeAttachTimeoutMs ?? 0;
     message.webmcp = object.webmcp ?? false;
+    message.remoteCdpUrl = object.remoteCdpUrl ?? "";
+    message.remoteCdpHeadersJson = object.remoteCdpHeadersJson ?? "";
     return message;
   },
 };

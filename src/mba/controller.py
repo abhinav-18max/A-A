@@ -353,6 +353,7 @@ def create_controller_app(controller: Controller):
 
     @app.post("/v1/sessions", dependencies=[Depends(authorize)])
     async def start(config: SessionConfig):
+        config.reject_remote_browser()
         return await controller.create(config)
 
     @app.get("/v1/sessions", dependencies=[Depends(authorize)])

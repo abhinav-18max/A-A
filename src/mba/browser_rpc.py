@@ -17,6 +17,20 @@ from mba.protocol import AdapterError
 from mba.setup import runtime_root
 
 
+def check_remote_host(url):
+    """Remote CDP hosts must be listed in MBA_REMOTE_CDP_HOSTS (comma-separated; *.example.com)."""
+    host = (urlsplit(url).hostname or "").lower()
+    allowed = [h.strip().lower() for h in os.environ.get("MBA_REMOTE_CDP_HOSTS", "").split(",")]
+    if not host or not any(
+        host == h or (h.startswith("*.") and host.endswith(h[1:])) for h in allowed if h
+    ):
+        raise AdapterError(
+            "remote_browser_not_allowed",
+            f"Add {host or 'the host'} to MBA_REMOTE_CDP_HOSTS to connect to it",
+            403,
+        )
+
+
 class BrowserDriver:
     def __init__(self, socket: Path, environment=None, harness_url=None):
         self.child = Child(socket)
@@ -60,12 +74,16 @@ class BrowserDriver:
             p = urlsplit(target)
             origins.add(f"{p.scheme}://{p.netloc}")
         script = (Path(__file__).parent / "observer.js").read_text()
+        if remote := config.remote_browser:
+            check_remote_host(remote.cdp_url)
         before = evidence.clock.now_us()
         ready = await self.stub.Start(
             pb.BrowserStart(
                 protocol_version=1,
                 browser_control=config.browser_control,
                 webmcp=config.webmcp,
+                remote_cdp_url=remote.cdp_url if remote else "",
+                remote_cdp_headers_json=json.dumps(remote.headers) if remote else "",
                 native_attach_timeout_ms=int(config.native_attach_timeout_s * 1000),
                 headless=config.headless
                 if config.headless is not None

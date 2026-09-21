@@ -32,6 +32,14 @@ class BindingConfig(Model):
     supports_video: bool = True
 
 
+class RemoteBrowser(Model):
+    """A remote Chrome reached over CDP, such as a Browserbase session. Text and browser only:
+    its microphone, speaker, camera and display are not A&A's, so media and recording are off."""
+
+    cdp_url: str = Field(pattern=r"^(wss?|https?)://", description="CDP WebSocket or HTTP endpoint")
+    headers: dict[str, str] = Field(default_factory=dict)
+
+
 class SessionConfig(Model):
     browser_control: Literal["tools", "native"] = "tools"
     native_attach_timeout_s: float = Field(default=120, gt=0, le=3600)
@@ -54,6 +62,8 @@ class SessionConfig(Model):
     max_duration_s: float = Field(default=1800, gt=0, le=86400)
     capture_tail_s: float = Field(default=2, ge=0, le=10)
     min_free_disk_mb: int = Field(default=1024, ge=1)
+    # Library-only: contains credentials and a network destination, so it is never serialized.
+    remote_browser: RemoteBrowser | None = Field(default=None, exclude=True)
 
     def request_body(self):
         """JSON for the HTTP API. WebMCP is sent only when enabled, so plain sessions still start
@@ -91,7 +101,26 @@ class SessionConfig(Model):
             raise ValueError("declarative bindings require target_url")
         if self.binding.kind == "harness" and self.target_url is not None:
             raise ValueError("harness binding uses the worker's local calibration website")
+        if self.remote_browser and (
+            self.browser_control != "tools"
+            or self.mode != "text"
+            or self.recording
+            or self.camera_enabled
+            or self.visual_enabled
+        ):
+            raise ValueError(
+                "remote_browser supports tools-mode text sessions only; set recording=False"
+            )
         return self
+
+    def reject_remote_browser(self):
+        """HTTP and MCP callers must not choose where the worker connects."""
+        if self.remote_browser is not None:
+            raise AdapterError(
+                "remote_browser_library_only",
+                "remote_browser is available only to the in-process library",
+                422,
+            )
 
 
 class AssetSource(Model):
