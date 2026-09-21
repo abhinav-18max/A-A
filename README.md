@@ -381,3 +381,4 @@ the native controller and checks child-process cleanup before removing the worke
 Docker Desktop's tested LinuxKit kernel has `CONFIG_MEDIA_SUPPORT` disabled, so it
 cannot run the v4l2loopback camera path. Camera acceptance requires a Linux host or
 VM with V4L2 and the loopback module configured by `deploy/provision-host.sh`.
+# A-A
